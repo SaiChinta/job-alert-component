@@ -1,0 +1,9 @@
+{
+    "name": "job-alert-component",
+    "version": "1.0.0",
+    "description": "Job Alert Component for Salesforce Field Service",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 0"
+    },
+    "dependencies": {}
+}
