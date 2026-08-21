@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Priority__c</fullName>
+    <description>Priority from the Service Appointment parent Work Order or Work Order Line Item.</description>
+    <externalId>false</externalId>
+    <formula>BLANKVALUE(TEXT(FS_Work_Order_Line_Item__r.Priority), TEXT(FS_Work_Order__r.Priority))</formula>
+    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
+    <label>Priority</label>
+    <required>false</required>
+    <securityClassification>Confidential</securityClassification>
+    <type>Text</type>
+    <unique>false</unique>
+</CustomField>

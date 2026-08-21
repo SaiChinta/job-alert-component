@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Panic_Service_Resource__c</fullName>
+    <deleteConstraint>SetNull</deleteConstraint>
+    <description>The service resource related to panic alerts.</description>
+    <externalId>false</externalId>
+    <label>Panic Service Resource</label>
+    <referenceTo>ServiceResource</referenceTo>
+    <relationshipLabel>FS Alert Centers</relationshipLabel>
+    <relationshipName>FS_AlertCenters_SR</relationshipName>
+    <required>false</required>
+    <securityClassification>Confidential</securityClassification>
+    <trackHistory>false</trackHistory>
+    <type>Lookup</type>
+</CustomField>

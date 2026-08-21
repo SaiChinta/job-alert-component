@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Alert_Type__c</fullName>
+    <description>Indicates whether this alert is a High Priority Alert or a Panic Alert.</description>
+    <externalId>false</externalId>
+    <label>Alert Type</label>
+    <required>false</required>
+    <securityClassification>Confidential</securityClassification>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>High Priority Alert</fullName>
+                <default>true</default>
+                <label>High Priority Alert</label>
+            </value>
+            <value>
+                <fullName>Panic Alert</fullName>
+                <default>false</default>
+                <label>Panic Alert</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

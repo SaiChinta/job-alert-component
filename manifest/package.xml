@@ -1,59 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
     <types>
-        <members>JobAlertUtilityController</members>
-        <members>JobAlertUtilityControllerTest</members>
+        <members>FS_AlertCenterUtilityController</members>
+        <members>FS_AlertCenterUtilityControllerTest</members>
+        <members>FS_ServiceAppointmentTriggerHandler</members>
         <name>ApexClass</name>
     </types>
     <types>
-        <members>jobAlertUtility</members>
+        <members>FS_ServiceAppointmentTrigger</members>
+        <name>ApexTrigger</name>
+    </types>
+    <types>
+        <members>fsAlertCenterUtility</members>
+        <members>fsMobilePanicButton</members>
         <name>LightningComponentBundle</name>
     </types>
     <types>
-        <members>Job_Alert_Component_Access</members>
+        <members>FS_AlertCenter_Component_Access</members>
         <name>PermissionSet</name>
     </types>
     <types>
-        <members>Job_Alert__c</members>
-        <members>Alert_Dismissal__c</members>
+        <members>FS_AlertCenter__c</members>
+        <members>FS_Alert_Dismissal__c</members>
+        <members>FS_Trigger_Bypass_Setting__c</members>
+        <members>FS_Alert_Center_Setting__mdt</members>
         <name>CustomObject</name>
     </types>
     <types>
-        <members>Job_Alert__c.Status__c</members>
-        <members>Job_Alert__c.Service_Appointment__c</members>
-        <members>Job_Alert__c.Service_Territory__c</members>
-        <members>Alert_Dismissal__c.Job_Alert__c</members>
-        <members>Alert_Dismissal__c.User__c</members>
+        <members>FS_AlertCenter__c.Status__c</members>
+        <members>FS_AlertCenter__c.Service_Appointment__c</members>
+        <members>FS_AlertCenter__c.Service_Territory__c</members>
+        <members>FS_AlertCenter__c.Panic_Service_Resource__c</members>
+        <members>FS_AlertCenter__c.Alert_Type__c</members>
+        <members>FS_AlertCenter__c.Last_Known_Latitude__c</members>
+        <members>FS_AlertCenter__c.Last_Known_Longitude__c</members>
+        <members>FS_AlertCenter__c.Nature_of_the_Emergency__c</members>
+        <members>FS_Alert_Dismissal__c.AlertCenter__c</members>
+        <members>FS_Alert_Dismissal__c.User__c</members>
+        <members>ServiceAppointment.Priority__c</members>
+        <members>ServiceAppointment.FS_Work_Order_Line_Item__c</members>
+        <members>ServiceAppointment.FS_Work_Order__c</members>
+        <members>FS_Trigger_Bypass_Setting__c.Bypass_Service_Appointment_Trigger__c</members>
+        <members>FS_Alert_Center_Setting__mdt.Alert_Priorities__c</members>
+        <members>FS_Alert_Center_Setting__mdt.Priority_Alerts_Enabled__c</members>
+        <members>FS_Alert_Center_Setting__mdt.Panic_Alerts_Enabled__c</members>
         <name>CustomField</name>
     </types>
     <types>
-        <members>Job_Alert__c-Job Alert Layout</members>
-        <members>Alert_Dismissal__c-Alert Dismissal Layout</members>
+        <members>FS_Alert_Center_Setting.Default_Setting</members>
+        <name>CustomMetadata</name>
+    </types>
+    <types>
+        <members>FS_AlertCenter__c-FS Alert Center Layout</members>
+        <members>FS_Alert_Dismissal__c-FS Alert Dismissal Layout</members>
+        <members>FS_Alert_Center_Setting__mdt-FS Alert Center Setting Layout</members>
+        <members>Global-FS Mobile Global Layout</members>
         <name>Layout</name>
     </types>
     <types>
-        <members>Job_Alert__c.All</members>
-        <members>Job_Alert__c.UU_All_Job_Alerts</members>
-        <members>Alert_Dismissal__c.All</members>
-        <members>Alert_Dismissal__c.UU_All_Alert_Dismissals</members>
+        <members>FS_Mobile_Panic_Button</members>
+        <name>QuickAction</name>
+    </types>
+    <types>
+        <members>FS_AlertCenter__c.All</members>
+        <members>FS_AlertCenter__c.FS_All_Alert_Centers</members>
+        <members>FS_AlertCenter__c.FS_All_Panic_Alerts</members>
+        <members>FS_AlertCenter__c.FS_All_High_Priority_Alerts</members>
+        <members>FS_Alert_Dismissal__c.All</members>
+        <members>FS_Alert_Dismissal__c.FS_All_Alert_Dismissals</members>
         <name>ListView</name>
     </types>
     <types>
-        <members>Job_Alert__c</members>
-        <members>Alert_Dismissal__c</members>
+        <members>FS_AlertCenter__c</members>
+        <members>FS_Alert_Dismissal__c</members>
         <name>CustomTab</name>
     </types>
     <types>
-        <members>Job_Alert_Record_Page</members>
-        <members>Alert_Dismissal_Record_Page</members>
+        <members>FS_AlertCenter_Record_Page</members>
+        <members>FS_Alert_Dismissal_Record_Page</members>
         <name>FlexiPage</name>
     </types>
     <types>
-        <members>ChangeEvents_Job_Alert_ChangeEvent</members>
+        <members>FS_ChangeEvents_AlertCenter_ChangeEvent</members>
         <name>PlatformEventChannelMember</name>
     </types>
     <types>
-        <members>UUAlertBuzzer</members>
+        <members>FS_AlertBuzzer</members>
         <name>StaticResource</name>
     </types>
     <version>61.0</version>

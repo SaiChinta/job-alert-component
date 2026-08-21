@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Nature_of_the_Emergency__c</fullName>
+    <description>Optional classification of the emergency provided when a panic alert is created.</description>
+    <externalId>false</externalId>
+    <label>Nature of the Emergency</label>
+    <required>false</required>
+    <securityClassification>Confidential</securityClassification>
+    <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
+    <type>Picklist</type>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Medical crisis</fullName>
+                <default>false</default>
+                <label>Medical crisis</label>
+            </value>
+            <value>
+                <fullName>Physical assault</fullName>
+                <default>false</default>
+                <label>Physical assault</label>
+            </value>
+            <value>
+                <fullName>Threat of violence</fullName>
+                <default>false</default>
+                <label>Threat of violence</label>
+            </value>
+            <value>
+                <fullName>Environmental accident</fullName>
+                <default>false</default>
+                <label>Environmental accident</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

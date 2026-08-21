@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ListView xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>All</fullName>
+    <columns>NAME</columns>
+    <columns>Alert_Type__c</columns>
+    <columns>Nature_of_the_Emergency__c</columns>
+    <columns>Service_Appointment__c</columns>
+    <columns>Panic_Service_Resource__c</columns>
+    <columns>Service_Territory__c</columns>
+    <columns>Status__c</columns>
+    <columns>Last_Known_Latitude__c</columns>
+    <columns>Last_Known_Longitude__c</columns>
+    <columns>CREATEDBY_USER</columns>
+    <columns>CREATED_DATE</columns>
+    <columns>UPDATEDBY_USER</columns>
+    <columns>LAST_UPDATE</columns>
+    <filterScope>Everything</filterScope>
+    <label>All</label>
+</ListView>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<QuickAction xmlns="http://soap.sforce.com/2006/04/metadata">
+    <actionSubtype>ScreenAction</actionSubtype>
+    <description>Emergency SOS button for Field Service Mobile. Creates a Panic Alert with GPS location.</description>
+    <label>FS Mobile Panic Button</label>
+    <lightningWebComponent>fsMobilePanicButton</lightningWebComponent>
+    <optionsCreateFeedItem>false</optionsCreateFeedItem>
+    <type>LightningWebComponent</type>
+</QuickAction>

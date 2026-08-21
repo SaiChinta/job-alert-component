@@ -9,3 +9,8 @@ node_modules/
 # OS files
 .DS_Store
 Thumbs.db
+
+# Local IDE and generated LWC tooling
+.vscode/
+**/jsconfig.json
+**/.eslintrc.json
