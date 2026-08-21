@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
     <fullName>Bypass_Service_Appointment_Trigger__c</fullName>
-    <defaultValue>false</fullName>
+    <defaultValue>false</defaultValue>
     <description>If checked, bypasses the Service Appointment trigger logic.</description>
-    <externalId>false</externalId>
     <label>Bypass Service Appointment Trigger</label>
     <securityClassification>Confidential</securityClassification>
     <trackTrending>false</trackTrending>

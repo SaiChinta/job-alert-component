@@ -3,7 +3,6 @@
     <fullName>Priority_Alerts_Enabled__c</fullName>
     <defaultValue>true</defaultValue>
     <description>Enable alert generation for high priority service appointments.</description>
-    <externalId>false</externalId>
     <fieldManageability>DeveloperControlled</fieldManageability>
     <label>Priority Alerts Enabled</label>
     <securityClassification>Confidential</securityClassification>

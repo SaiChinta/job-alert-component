@@ -3,7 +3,6 @@
     <fullName>Panic_Service_Resource__c</fullName>
     <deleteConstraint>SetNull</deleteConstraint>
     <description>The service resource related to panic alerts.</description>
-    <externalId>false</externalId>
     <label>Panic Service Resource</label>
     <referenceTo>ServiceResource</referenceTo>
     <relationshipLabel>FS Alert Centers</relationshipLabel>
@@ -11,5 +10,6 @@
     <required>false</required>
     <securityClassification>Confidential</securityClassification>
     <trackHistory>false</trackHistory>
+    <trackTrending>false</trackTrending>
     <type>Lookup</type>
 </CustomField>

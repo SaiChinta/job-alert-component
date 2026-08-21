@@ -11,12 +11,27 @@
     <description>Grants access to the FS Alert Center component, panic button, and related schema.</description>
     <fieldPermissions>
         <editable>true</editable>
-        <field>FS_Alert_Dismissal__c.User__c</field>
+        <field>FS_AlertCenter__c.Alert_Type__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>FS_AlertCenter__c.Alert_Type__c</field>
+        <field>FS_AlertCenter__c.Last_Known_Latitude__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>FS_AlertCenter__c.Last_Known_Longitude__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>FS_AlertCenter__c.Nature_of_the_Emergency__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>FS_AlertCenter__c.Panic_Service_Resource__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -36,32 +51,7 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>FS_AlertCenter__c.Panic_Service_Resource__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>FS_AlertCenter__c.Last_Known_Latitude__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>FS_AlertCenter__c.Last_Known_Longitude__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>FS_AlertCenter__c.Nature_of_the_Emergency__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>User.Phone</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>User.EmployeeNumber</field>
+        <field>FS_Alert_Dismissal__c.User__c</field>
         <readable>true</readable>
     </fieldPermissions>
     <fieldPermissions>
@@ -88,7 +78,7 @@
         <allowEdit>true</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
-        <object>FS_Alert_Dismissal__c</object>
+        <object>FS_AlertCenter__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
@@ -97,7 +87,7 @@
         <allowEdit>true</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
-        <object>FS_AlertCenter__c</object>
+        <object>FS_Alert_Dismissal__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
@@ -119,11 +109,11 @@
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <tabSettings>
-        <tab>FS_Alert_Dismissal__c</tab>
+        <tab>FS_AlertCenter__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
     <tabSettings>
-        <tab>FS_AlertCenter__c</tab>
+        <tab>FS_Alert_Dismissal__c</tab>
         <visibility>Visible</visibility>
     </tabSettings>
 </PermissionSet>

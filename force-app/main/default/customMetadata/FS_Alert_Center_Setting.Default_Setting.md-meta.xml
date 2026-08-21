@@ -7,11 +7,11 @@
         <value xsi:type="xsd:string">High,Critical,Jeopardy</value>
     </values>
     <values>
-        <field>Priority_Alerts_Enabled__c</field>
+        <field>Panic_Alerts_Enabled__c</field>
         <value xsi:type="xsd:boolean">true</value>
     </values>
     <values>
-        <field>Panic_Alerts_Enabled__c</field>
+        <field>Priority_Alerts_Enabled__c</field>
         <value xsi:type="xsd:boolean">true</value>
     </values>
 </CustomMetadata>

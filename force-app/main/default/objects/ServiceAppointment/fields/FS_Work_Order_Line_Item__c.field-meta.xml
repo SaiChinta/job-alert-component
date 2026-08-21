@@ -3,7 +3,6 @@
     <fullName>FS_Work_Order_Line_Item__c</fullName>
     <deleteConstraint>SetNull</deleteConstraint>
     <description>The associated Work Order Line Item for this Service Appointment.</description>
-    <externalId>false</externalId>
     <label>Work Order Line Item</label>
     <referenceTo>WorkOrderLineItem</referenceTo>
     <relationshipLabel>Service Appointments</relationshipLabel>

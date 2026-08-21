@@ -4,10 +4,10 @@
     <description>Priority from the Service Appointment parent Work Order or Work Order Line Item.</description>
     <externalId>false</externalId>
     <formula>BLANKVALUE(TEXT(FS_Work_Order_Line_Item__r.Priority), TEXT(FS_Work_Order__r.Priority))</formula>
-    <formulaTreatBlanksAs>BlankAsBlank</formulaTreatBlanksAs>
     <label>Priority</label>
     <required>false</required>
     <securityClassification>Confidential</securityClassification>
+    <trackHistory>false</trackHistory>
     <type>Text</type>
     <unique>false</unique>
 </CustomField>

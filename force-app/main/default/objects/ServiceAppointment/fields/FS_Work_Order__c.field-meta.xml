@@ -3,7 +3,6 @@
     <fullName>FS_Work_Order__c</fullName>
     <deleteConstraint>SetNull</deleteConstraint>
     <description>The associated Work Order for this Service Appointment.</description>
-    <externalId>false</externalId>
     <label>Work Order</label>
     <referenceTo>WorkOrder</referenceTo>
     <relationshipLabel>Service Appointments</relationshipLabel>
