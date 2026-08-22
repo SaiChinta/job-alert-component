@@ -2,6 +2,7 @@ import { LightningElement, track, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { createRecord } from 'lightning/uiRecordApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
+import { getLocationService } from 'lightning/mobileCapabilities';
 import userId from '@salesforce/user/Id';
 
 const SERVICE_RESOURCE_QUERY = gql`
@@ -49,6 +50,7 @@ export default class FsMobilePanicButton extends LightningElement {
     currentUserId = userId;
     serviceResourceId;
     territoryMemberEdges = [];
+    locationService;
 
     @track isLoading = false;
     @track isEmergencyTriggered = false;
@@ -56,6 +58,14 @@ export default class FsMobilePanicButton extends LightningElement {
     @track latitude = null;
     @track longitude = null;
     @track selectedNature = '';
+
+    connectedCallback() {
+        try {
+            this.locationService = getLocationService();
+        } catch {
+            this.locationService = null;
+        }
+    }
 
     get natureOptions() {
         return [
@@ -80,6 +90,10 @@ export default class FsMobilePanicButton extends LightningElement {
         return {
             resourceId: this.serviceResourceId
         };
+    }
+
+    get isNativeLocationAvailable() {
+        return this.locationService && typeof this.locationService.isAvailable === 'function' && this.locationService.isAvailable();
     }
 
     @wire(graphql, {
@@ -116,16 +130,41 @@ export default class FsMobilePanicButton extends LightningElement {
     handleSOSClick() {
         this.isLoading = true;
         this.statusMessage = 'Fetching device GPS coordinates...';
+        this.captureDeviceLocation()
+            .then((coords) => {
+                this.latitude = coords.latitude;
+                this.longitude = coords.longitude;
+                this.sendAlertToDispatcher();
+            })
+            .catch((error) => {
+                this.handleLocationError(error);
+            });
+    }
 
-        if (navigator.geolocation) {
+    captureDeviceLocation() {
+        if (this.isNativeLocationAvailable) {
+            return this.locationService
+                .getCurrentPosition({ enableHighAccuracy: true })
+                .then((position) => this.coordsFromPosition(position));
+        }
+        return this.captureBrowserLocation();
+    }
+
+    captureBrowserLocation() {
+        return new Promise((resolve, reject) => {
+            if (!navigator.geolocation) {
+                reject({
+                    code: 'UNSUPPORTED',
+                    message: 'Geolocation is not supported on this device.'
+                });
+                return;
+            }
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    this.latitude = position.coords.latitude;
-                    this.longitude = position.coords.longitude;
-                    this.sendAlertToDispatcher();
+                    resolve(this.coordsFromPosition(position));
                 },
                 (error) => {
-                    this.handleLocationError(error);
+                    reject(error);
                 },
                 {
                     enableHighAccuracy: true,
@@ -133,10 +172,15 @@ export default class FsMobilePanicButton extends LightningElement {
                     maximumAge: 0
                 }
             );
-        } else {
-            this.showToast('Error', 'Geolocation is not supported on this device.', 'error');
-            this.isLoading = false;
-        }
+        });
+    }
+
+    coordsFromPosition(position) {
+        const coords = position && position.coords ? position.coords : {};
+        return {
+            latitude: coords.latitude,
+            longitude: coords.longitude
+        };
     }
 
     sendAlertToDispatcher() {
@@ -207,13 +251,16 @@ export default class FsMobilePanicButton extends LightningElement {
 
     handleLocationError(error) {
         this.isLoading = false;
+        const code = error && error.code;
         let msg = 'Failed to capture GPS location.';
-        if (error.code === error.PERMISSION_DENIED) {
-            msg = 'Location access denied. Please enable GPS permissions for the Field Service app.';
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
+        if (code === 'USER_DENIED_PERMISSION' || code === 'LOCATION_SERVICE_DISABLED' || code === 1) {
+            msg = 'Location access denied. Enable Location for the Field Service app in device Settings.';
+        } else if (code === 'POSITION_UNAVAILABLE' || code === 2) {
             msg = 'Location information is unavailable.';
-        } else if (error.code === error.TIMEOUT) {
+        } else if (code === 'TIMEOUT' || code === 3) {
             msg = 'GPS location request timed out.';
+        } else if (code === 'UNSUPPORTED') {
+            msg = error.message || msg;
         }
         this.showToast('GPS Error', msg, 'error');
     }

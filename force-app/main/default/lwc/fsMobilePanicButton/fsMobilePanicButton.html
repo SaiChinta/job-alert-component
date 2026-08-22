@@ -1,37 +1,36 @@
 <template>
     <div class="sos-container slds-p-around_medium slds-text-align_center">
-        <!-- SOS Main Trigger Button -->
         <template if:false={isEmergencyTriggered}>
-            <div class="nature-picker slds-m-bottom_medium">
-                <lightning-combobox
-                    name="natureOfEmergency"
-                    label="Nature of the emergency"
-                    placeholder="Optional"
-                    value={selectedNature}
-                    options={natureOptions}
-                    onchange={handleNatureChange}
-                ></lightning-combobox>
-            </div>
-            <div class="sos-button-wrapper">
-                <button class="sos-button" onclick={handleSOSClick} disabled={isLoading}>
-                    <span class="sos-text">SOS</span>
-                    <span class="sos-subtext">EMERGENCY</span>
-                </button>
-            </div>
-            <p class="slds-m-top_medium instructions-text">
-                Tap to broadcast your current GPS location and send an immediate alert to dispatchers.
-            </p>
+            <template if:false={isLoading}>
+                <div class="nature-picker slds-m-bottom_medium">
+                    <lightning-combobox
+                        name="natureOfEmergency"
+                        label="Nature of the emergency"
+                        placeholder="Optional"
+                        variant="label-stacked"
+                        value={selectedNature}
+                        options={natureOptions}
+                        onchange={handleNatureChange}
+                    ></lightning-combobox>
+                </div>
+                <div class="sos-button-wrapper">
+                    <button type="button" class="sos-button" onclick={handleSOSClick}>
+                        <span class="sos-text">SOS</span>
+                        <span class="sos-subtext">EMERGENCY</span>
+                    </button>
+                </div>
+                <p class="slds-m-top_medium instructions-text">
+                    Tap to broadcast your current GPS location and send an immediate alert to dispatchers.
+                </p>
+            </template>
+            <template if:true={isLoading}>
+                <div class="loading-panel">
+                    <lightning-spinner alternative-text="Capturing GPS Location & Sending Alert" size="medium"></lightning-spinner>
+                    <p class="slds-m-top_small slds-text-title_bold">{statusMessage}</p>
+                </div>
+            </template>
         </template>
 
-        <!-- Loading Spinner -->
-        <template if:true={isLoading}>
-            <div class="slds-m-vertical_large">
-                <lightning-spinner alternative-text="Capturing GPS Location & Sending Alert" size="medium"></lightning-spinner>
-                <p class="slds-m-top_small slds-text-title_bold">{statusMessage}</p>
-            </div>
-        </template>
-
-        <!-- Confirmation / Success State -->
         <template if:true={isEmergencyTriggered}>
             <div class="slds-box slds-theme_success slds-p-around_medium alert-success-box">
                 <lightning-icon icon-name="utility:success" variant="inverse" size="large"></lightning-icon>

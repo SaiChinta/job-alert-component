@@ -3,12 +3,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    min-height: 250px;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: min(100%, 70dvh);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
 }
 
 .nature-picker {
     width: 100%;
-    max-width: 280px;
+    max-width: min(100%, 22rem);
     text-align: left;
 }
 
@@ -18,10 +22,9 @@
     align-items: center;
 }
 
-/* Pulsing Red Emergency Button */
 .sos-button {
-    width: 140px;
-    height: 140px;
+    width: clamp(7rem, 42vw, 10rem);
+    height: clamp(7rem, 42vw, 10rem);
     border-radius: 50%;
     background: linear-gradient(145deg, #ff2e2e, #cc0000);
     border: 4px solid #ffffff;
@@ -34,6 +37,8 @@
     cursor: pointer;
     animation: pulse 1.8s infinite;
     transition: transform 0.1s ease;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
 }
 
 .sos-button:active {
@@ -41,28 +46,37 @@
 }
 
 .sos-text {
-    font-size: 32px;
+    font-size: clamp(1.5rem, 6vw, 2rem);
     font-weight: 900;
     letter-spacing: 2px;
     line-height: 1;
 }
 
 .sos-subtext {
-    font-size: 11px;
+    font-size: clamp(0.625rem, 2.6vw, 0.75rem);
     font-weight: 700;
     margin-top: 4px;
     letter-spacing: 1px;
 }
 
 .instructions-text {
-    font-size: 13px;
+    font-size: clamp(0.75rem, 3.4vw, 0.8125rem);
     color: #514f4d;
-    max-width: 280px;
+    max-width: min(100%, 22rem);
+}
+
+.loading-panel {
+    min-height: 8rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
 }
 
 .alert-success-box {
     border-radius: 12px;
     width: 100%;
+    max-width: min(100%, 22rem);
 }
 
 .bold-text {
@@ -74,9 +88,29 @@
     background: rgba(255, 255, 255, 0.2);
     padding: 8px;
     border-radius: 6px;
+    word-break: break-word;
 }
 
-/* Pulsing Animation */
+@media (max-height: 500px) and (orientation: landscape) {
+    .sos-container {
+        min-height: auto;
+        justify-content: flex-start;
+    }
+
+    .sos-button {
+        width: 5.5rem;
+        height: 5.5rem;
+    }
+
+    .sos-text {
+        font-size: 1.25rem;
+    }
+
+    .instructions-text {
+        margin-top: 0.5rem;
+    }
+}
+
 @keyframes pulse {
     0% {
         box-shadow: 0 0 0 0 rgba(204, 0, 0, 0.7), 0 8px 15px rgba(0, 0, 0, 0.3);
