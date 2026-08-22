@@ -136,20 +136,12 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         return this.combinedCount > 0;
     }
 
-    get visibleAlerts() {
-        if (this.showTabset) {
-            if (this.activeTab === 'panic') {
-                return this.panicAlerts;
-            }
-            return this.jobAlerts;
-        }
-        if (this.showPanicOnly) {
-            return this.panicAlerts;
-        }
-        if (this.showJobsOnly) {
-            return this.jobAlerts;
-        }
-        return [];
+    get priorityTabLabel() {
+        return 'Priority Alerts (' + this.jobAlerts.length + ')';
+    }
+
+    get panicTabLabel() {
+        return 'Panic Alerts (' + this.panicAlerts.length + ')';
     }
 
     toggleCommunityPanel() {
@@ -327,10 +319,33 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
             });
     }
 
-    handleUndoDismissAll() {
-        undoAllDismissals()
+    resolveAlertType(event) {
+        const dataset = event && event.currentTarget ? event.currentTarget.dataset : null;
+        if (!dataset || !dataset.alertType) {
+            return null;
+        }
+        return dataset.alertType;
+    }
+
+    alertsForType(alertType) {
+        if (alertType === ALERT_TYPE_PANIC) {
+            return this.panicAlerts;
+        }
+        if (alertType === ALERT_TYPE_JOB) {
+            return this.jobAlerts;
+        }
+        return [];
+    }
+
+    handleUndoDismissAll(event) {
+        const alertType = this.resolveAlertType(event);
+        if (!alertType) {
+            return;
+        }
+        const restoredLabel = alertType === ALERT_TYPE_PANIC ? 'panic alerts' : 'priority alerts';
+        undoAllDismissals({ alertType: alertType })
             .then(() => {
-                this.showToast('Restored', 'Previously dismissed alerts have been restored.', 'success', 'dismissible');
+                this.showToast('Restored', 'Previously dismissed ' + restoredLabel + ' have been restored.', 'success', 'dismissible');
                 this.loadAlerts(false);
             })
             .catch(() => {
@@ -399,8 +414,9 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
             });
     }
 
-    handleDismissAll() {
-        const sourceAlerts = this.visibleAlerts;
+    handleDismissAll(event) {
+        const alertType = this.resolveAlertType(event);
+        const sourceAlerts = this.alertsForType(alertType);
         if (!sourceAlerts || sourceAlerts.length === 0) {
             return;
         }

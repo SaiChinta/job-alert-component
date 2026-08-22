@@ -2,17 +2,18 @@
 
 A reusable Field Service package that alerts **dispatchers** of high-priority jobs and field-resource panic events in the Service Territories they currently have loaded on the Gantt.
 
-Dispatchers use the **FS Alert Center** utility bar LWC (`fsAlertCenterUtility`). Technicians raise panic events from the **FS Mobile Panic Button** global action (`fsMobilePanicButton`). Architecture, data model, and sequence detail live in `docs/FS_Alert_Center_Design.md`.
+Dispatchers use the **FS Alert Center** utility bar LWC (`fsAlertCenterUtility`). Technicians raise panic events from the **FS Mobile Panic Button** global action (`fsMobilePanicButton`). Architecture, data model, per-tab action design, and sequence detail live in `docs/FS_Alert_Center_Design.md`.
 
 ## Features
 
-- Configurable **Jobs**, **Panic**, or **both** via Custom Metadata (no code change).
+- Configurable **Priority Alerts**, **Panic Alerts**, or **both** via Custom Metadata (no code change).
 - High Priority Alerts created from the Service Appointment trigger when parent Work Order / Work Order Line Item priority matches a comma-separated list.
 - Offline-capable Field Service Mobile SOS that creates a Panic Alert with GPS, Service Resource, optional Nature of the Emergency, and primary territory.
 - Utility list filtered by the dispatcher’s **Gantt-loaded Service Territories**.
 - Real-time updates via Change Data Capture and empApi (Lightning). Experience Cloud uses 20-second polling.
 - Audio buzzer and utility-bar badge on new relevant alerts.
-- Global **acknowledge** and personal **dismiss**, plus restore of today’s dismissals.
+- Global **acknowledge** and personal **dismiss**, with **per-type** Dismiss All and restore of today’s dismissals.
+- Tabs **Priority Alerts (n)** and **Panic Alerts (n)**; Sync, Undo, and Dismiss All sit on each type (Salesforce utility chrome keeps the combined `Alert Center (n)` label).
 - Job-card filter icon publishes a Field Service event that **creates and loads a temporary Gantt filter** for that Service Appointment.
 - Packaged list views for All, High Priority, and Panic alerts.
 
@@ -42,7 +43,8 @@ flowchart TD
 
     subgraph act [Dispatcher action]
         Ack[Acknowledge globally]
-        Dis[Dismiss personally]
+        Dis[Dismiss one personally]
+        TabAct[Per-tab Sync Undo Dismiss All]
         Filt[Publish Gantt filter event]
     end
 
@@ -59,35 +61,36 @@ flowchart TD
     CMDT --> Util
     Util --> Ack
     Util --> Dis
+    Util --> TabAct
     Util --> Filt
 ```
 
-## Configurability: Jobs, Panic, or both
+## Configurability: Priority Alerts, Panic Alerts, or both
 
 Edit Custom Metadata **FS Alert Center Setting** record **Default Setting** (`FS_Alert_Center_Setting.Default_Setting`).
 
 | Field | Packaged default | What it controls |
 |---|---|---|
-| `Priority_Alerts_Enabled__c` | true | **On:** trigger may insert High Priority Alerts; utility shows Jobs. **Off:** no job-alert inserts; Jobs tab hidden. |
-| `Panic_Alerts_Enabled__c` | true | **On:** utility shows Panic. **Off:** Panic tab hidden. Mobile SOS can still create records; they will not appear in the utility. |
+| `Priority_Alerts_Enabled__c` | true | **On:** trigger may insert High Priority Alerts; utility shows Priority Alerts. **Off:** no job-alert inserts; Priority tab hidden. |
+| `Panic_Alerts_Enabled__c` | true | **On:** utility shows Panic Alerts. **Off:** Panic tab hidden. Mobile SOS can still create records; they will not appear in the utility. |
 | `Alert_Priorities__c` | `High,Critical,Jeopardy` | Comma-separated, case-insensitive list matched to Work Order Line Item Priority, then Work Order Priority. |
 
 Utility layout from the two flags:
 
 | Priority | Panic | What dispatchers see |
 |---|---|---|
-| true | true | Tabs **Jobs** and **Panic** |
-| true | false | Jobs list only |
-| false | true | Panic list only |
+| true | true | Tabs **Priority Alerts (n)** and **Panic Alerts (n)**, each with its own Sync / Undo / Dismiss All toolbar |
+| true | false | Priority list plus that type’s toolbar |
+| false | true | Panic list plus that type’s toolbar |
 | false | false | Empty panel |
 
-The badge count includes only enabled types. If only Panic is enabled, the panel opens on the Panic list.
+The Salesforce utility item label stays `Alert Center (n)` (combined count of enabled types). Each tab label carries **that type’s** count. If only Panic is enabled, the panel opens on the Panic list.
 
 Turning Panic off in CMDT does **not** disable the mobile SOS button. It only hides Panic cards in the dispatcher utility.
 
 ## Criteria for alert creation
 
-### High Priority Alert (Jobs)
+### High Priority Alert (Priority Alerts)
 
 Handler: `FS_ServiceAppointmentTrigger` → `FS_ServiceAppointmentTriggerHandler` on after insert and after update.
 
@@ -136,7 +139,7 @@ Apex reads `FSL__User_Setting_Territory__c` where `FSL__User_Setting__r.FSL__Use
 
 If the dispatcher has loaded **no** territories, the utility shows **no** alerts.
 
-Use the utility **Refresh** (sync) icon after changing Gantt-loaded territories so the query picks up the new set.
+Use the **Sync** (refresh) icon on the Priority or Panic toolbar after changing Gantt-loaded territories so the query picks up the new set.
 
 Matching is exact on the alert’s territory. Parent/child territory trees are not expanded unless those territories are also loaded on the Gantt.
 
@@ -146,6 +149,61 @@ Additional visibility rules (on top of territory):
 - The current user does not have an `FS_Alert_Dismissal__c` row for that alert.
 - The alert type is enabled in CMDT.
 
+## Utility layout and per-tab actions
+
+The inner panel no longer has a duplicate **Alert Center (n)** header with shared Sync / Undo / Dismiss All. Salesforce utility chrome already shows `Alert Center (n)`. Experience Cloud (`isCommunityMode`) keeps only a minimize control so the floating panel can close.
+
+Each enabled type has its own toolbar **above that type’s cards**:
+
+| Control | Icon | Scope |
+|---|---|---|
+| **Sync** | refresh | Reloads **all** enabled types from Gantt territories (`loadAlerts`). Same query either tab; the icon is repeated so it is always next to the list you are looking at. |
+| **Undo** | undo | Restores **today’s** personal dismissals for **that type only**. |
+| **Dismiss All** | clear | Personally dismisses **New** cards of **that type only**. Skips acknowledged cards. |
+
+Tab labels (when both types are enabled):
+
+- `Priority Alerts (n)` — `n` is the count of High Priority Alert cards currently visible to this user
+- `Panic Alerts (n)` — `n` is the count of Panic Alert cards currently visible to this user
+
+Empty copy is type-specific: “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
+
+Internal tab values remain `jobs` and `panic`. Toolbar buttons pass the picklist API value via `data-alert-type`:
+
+- Priority toolbar: `High Priority Alert`
+- Panic toolbar: `Panic Alert`
+
+```mermaid
+flowchart LR
+    Chrome[Utility chrome Alert Center n]
+    PriTab[Priority Alerts n]
+    PanicTab[Panic Alerts n]
+    PriBar[Sync Undo Dismiss All]
+    PanicBar[Sync Undo Dismiss All]
+    PriCards[High Priority cards]
+    PanicCards[Panic cards]
+
+    Chrome --> PriTab
+    Chrome --> PanicTab
+    PriTab --> PriBar
+    PriBar --> PriCards
+    PanicTab --> PanicBar
+    PanicBar --> PanicCards
+```
+
+### Why Dismiss All and Undo are per type
+
+A shared header Dismiss All used whichever list `activeTab` pointed at. If the dispatcher stayed on Priority Alerts, Panic **Dismiss All** was never the header’s target even when they thought they were clearing panic. Undo deleted **all** of today’s `FS_Alert_Dismissal__c` rows for the user, so restoring Priority also restored Panic (and the reverse).
+
+Implementation:
+
+1. `handleDismissAll` reads `event.currentTarget.dataset.alertType` and dismisses only **New** cards from `jobAlerts` or `panicAlerts`.
+2. `handleUndoDismissAll` calls `undoAllDismissals(alertType)`.
+3. Apex deletes today’s dismissals for the current user where `AlertCenter__r.Alert_Type__c` equals that value. Blank or unknown types are ignored (no deletes).
+4. `dismissAllAlerts(List<Id>)` is unchanged; the LWC only sends IDs for the chosen type.
+
+Card-level Acknowledge and Dismiss are unchanged (one record at a time).
+
 ## Acknowledge, dismiss, and restore
 
 ```mermaid
@@ -154,7 +212,7 @@ stateDiagram-v2
     New --> Acknowledged: Acknowledge
     Acknowledged --> New: Dismiss while acknowledged
     New --> Hidden: Personal dismissal record
-    Hidden --> New: Restore todays dismissals
+    Hidden --> New: Restore todays dismissals for that type
 ```
 
 | Action | Scope | Behavior |
@@ -162,14 +220,12 @@ stateDiagram-v2
 | **Acknowledge** (check icon) | Global | Sets Status to `Acknowledged`. Other dispatchers lose the card (they are not LastModifiedBy). The acknowledger still sees it. |
 | **Dismiss** one (close icon) on a **New** alert | Personal | Inserts `FS_Alert_Dismissal__c` for this user. Others still see the alert. |
 | **Dismiss** one on an **Acknowledged** alert | Global revert | Sets Status back to `New` (no dismissal row). The alert returns to other dispatchers in matching territories. |
-| **Dismiss All** (clear icon) | Personal, current list | Dismisses **New** cards on the active Jobs or Panic list. Skips acknowledged cards. |
-| **Restore** (undo icon) | Personal | Deletes this user’s dismissal rows with `CreatedDate = TODAY`. Older dismissals are not restored. |
-
-Header **Dismiss All** only processes the list currently on screen (active tab when both types are enabled).
+| **Dismiss All** (clear icon on a type toolbar) | Personal, that type | Dismisses **New** cards of that type (Priority or Panic). Skips acknowledged cards. Does not touch the other type. |
+| **Restore** (undo icon on a type toolbar) | Personal, that type | Deletes this user’s dismissal rows with `CreatedDate = TODAY` **and** `AlertCenter__r.Alert_Type__c` matching that toolbar. Older dismissals and the other type are not restored. |
 
 ## Dynamic Gantt filter from the job card
 
-On a High Priority (Jobs) card, the filter icon calls `FS_AlertCenterUtilityController.createTemporaryGanttFilter`.
+On a High Priority (Priority Alerts) card, the filter icon calls `FS_AlertCenterUtilityController.createTemporaryGanttFilter`.
 
 That method publishes Field Service platform event `FSL__CreateFilterEvent__e`:
 
@@ -197,7 +253,7 @@ Use the **utility** for live, territory-scoped work. Use **list views** for sear
 
 ## Dispatcher card contents
 
-**Jobs:** appointment number (opens the SA), Gantt filter, copy appointment number, SA Priority, Early Start, Due Date, Territory, Created, Address (Street and City).
+**Priority Alerts:** appointment number (opens the SA), Gantt filter, copy appointment number, SA Priority, Early Start, Due Date, Territory, Created, Address (Street and City).
 
 **Panic:** resource name (opens the Service Resource). Shown only when populated: Phone/Mobile, Employee Number, Nature of the Emergency. Always: Territory, Created. If GPS exists: **Reported Location** map pin.
 
@@ -301,7 +357,7 @@ The global publisher layout includes the panic action in **Mobile and Lightning 
 1. Assign **FS Alert Center Component Access** to dispatchers (and to anyone who must create or see Alert Center data).
 2. Add **FS Alert Center** (`fsAlertCenterUtility`) to the Lightning app **utility bar**.
 3. Confirm Change Data Capture includes `FS_AlertCenter__c` (packaged as `FS_ChangeEvents_AlertCenter_ChangeEvent` on the ChangeEvents channel).
-4. Set **Default Setting** CMDT flags for Jobs / Panic / priorities.
+4. Set **Default Setting** CMDT flags for Priority Alerts / Panic Alerts / priorities.
 5. Add **FS Mobile Panic Button** as a Field Service Mobile global action. The packaged publisher layout is **FS Mobile Global Layout**. In Setup → Publisher Layouts, assign it to the **Field Service Technician** profile (profile assignment is **not** in the package).
 6. Prime `FS_AlertCenter__c`, `ServiceResource`, and `ServiceTerritoryMember` in the Field Service Mobile Offline Brief.
 7. Ensure technicians have a **Service Resource** linked to their User and a **primary** Service Territory Member so panic rows get a territory and appear on dispatcher utilities.

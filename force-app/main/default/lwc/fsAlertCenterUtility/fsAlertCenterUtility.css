@@ -57,10 +57,19 @@
     pointer-events: auto;
 }
 
+.community-close-bar {
+    border-bottom: 1px solid #dddbda;
+    flex-shrink: 0;
+}
+
 .alert-panel-body {
     height: 100%;
     overflow-y: auto;
     padding-bottom: 60px;
+}
+
+.tab-action-bar {
+    min-height: 2rem;
 }
 
 .location-map-link {

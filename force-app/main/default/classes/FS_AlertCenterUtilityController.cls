@@ -214,17 +214,26 @@ public inherited sharing class FS_AlertCenterUtilityController {
     }
 
     /**
-     * @description Restores all dismissed alerts for the current user by deleting their personal dismissal records.
+     * @description Restores today's personal dismissals for one alert type for the current user.
+     * @param alertType Alert type API value: High Priority Alert or Panic Alert.
      */
     @AuraEnabled
-    public static void undoAllDismissals() {
+    public static void undoAllDismissals(String alertType) {
         try {
+            if (String.isBlank(alertType)) {
+                return;
+            }
+            if (alertType != 'High Priority Alert' && alertType != 'Panic Alert') {
+                return;
+            }
+
             Id userId = UserInfo.getUserId();
             List<FS_Alert_Dismissal__c> dismissals = [
                 SELECT Id
                 FROM FS_Alert_Dismissal__c
                 WHERE User__c = :userId
                 AND CreatedDate = TODAY
+                AND AlertCenter__r.Alert_Type__c = :alertType
                 WITH SYSTEM_MODE
             ];
 

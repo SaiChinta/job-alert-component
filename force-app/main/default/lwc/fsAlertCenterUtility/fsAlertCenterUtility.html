@@ -10,35 +10,30 @@
     </template>
 
     <div class={panelContainerClass}>
-        <div class="slds-panel__header">
-            <h2 class="slds-panel__header-title slds-text-heading_small slds-truncate" title="Alert Center">
-                Alert Center ({combinedCount})
-            </h2>
-
-            <div class="slds-panel__header-actions slds-is-relative">
-                <template if:true={isCommunityMode}>
-                    <lightning-button-icon icon-name="utility:minimize_window" variant="bare" alternative-text="Close Panel" onclick={toggleCommunityPanel} class="slds-m-right_small"></lightning-button-icon>
-                </template>
-
-                <lightning-button-icon icon-name="utility:refresh" variant="bare" alternative-text="Sync Territories"
-                    onclick={handleRefresh} title="Sync Territory Filters" class="slds-m-right_small">
-                </lightning-button-icon>
-
-                <lightning-button-icon icon-name="utility:undo" variant="bare"
-                    alternative-text="Restore Dismissed Alerts" onclick={handleUndoDismissAll}
-                    title="Restore Dismissed Alerts" class="slds-m-right_small">
-                </lightning-button-icon>
-
-                <lightning-button-icon icon-name="utility:clear" variant="bare" alternative-text="Dismiss All"
-                    onclick={handleDismissAll} title="Dismiss All (Personal)">
-                </lightning-button-icon>
+        <template if:true={isCommunityMode}>
+            <div class="community-close-bar slds-grid slds-grid_align-end slds-p-around_xx-small">
+                <lightning-button-icon icon-name="utility:minimize_window" variant="bare" alternative-text="Close Panel"
+                    onclick={toggleCommunityPanel}></lightning-button-icon>
             </div>
-        </div>
+        </template>
 
         <div class="slds-panel__body alert-panel-body">
             <template if:true={showTabset}>
                 <lightning-tabset active-tab-value={activeTab} onactive={handleTabActive}>
-                    <lightning-tab label="Jobs" value="jobs">
+                    <lightning-tab label={priorityTabLabel} value="jobs">
+                        <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                            <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                alternative-text="Sync Territories" title="Sync Territory Filters"
+                                data-alert-type="High Priority Alert" onclick={handleRefresh}
+                                class="slds-m-right_xx-small"></lightning-button-icon>
+                            <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                alternative-text="Restore Dismissed Priority Alerts"
+                                title="Restore Dismissed Priority Alerts" data-alert-type="High Priority Alert"
+                                onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                            <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
+                                data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
+                        </div>
                         <template if:true={hasJobAlerts}>
                             <ul class="slds-notification-list">
                                 <template for:each={jobAlerts} for:item="alert">
@@ -106,11 +101,24 @@
                         </template>
                         <template if:false={hasJobAlerts}>
                             <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                                No job alerts match your loaded filters.
+                                No priority alerts match your loaded filters.
                             </div>
                         </template>
                     </lightning-tab>
-                    <lightning-tab label="Panic" value="panic">
+                    <lightning-tab label={panicTabLabel} value="panic">
+                        <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                            <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                alternative-text="Sync Territories" title="Sync Territory Filters"
+                                data-alert-type="Panic Alert" onclick={handleRefresh}
+                                class="slds-m-right_xx-small"></lightning-button-icon>
+                            <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                alternative-text="Restore Dismissed Panic Alerts"
+                                title="Restore Dismissed Panic Alerts" data-alert-type="Panic Alert"
+                                onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                            <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
+                                data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
+                        </div>
                         <template if:true={hasPanicAlerts}>
                             <ul class="slds-notification-list">
                                 <template for:each={panicAlerts} for:item="alert">
@@ -181,6 +189,19 @@
             </template>
 
             <template if:true={showJobsOnly}>
+                <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                        data-alert-type="High Priority Alert" onclick={handleRefresh}
+                        class="slds-m-right_xx-small"></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                        alternative-text="Restore Dismissed Priority Alerts"
+                        title="Restore Dismissed Priority Alerts" data-alert-type="High Priority Alert"
+                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                        alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
+                        data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
+                </div>
                 <template if:true={hasJobAlerts}>
                     <ul class="slds-notification-list">
                         <template for:each={jobAlerts} for:item="alert">
@@ -248,12 +269,25 @@
                 </template>
                 <template if:false={hasJobAlerts}>
                     <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                        No job alerts match your loaded filters.
+                        No priority alerts match your loaded filters.
                     </div>
                 </template>
             </template>
 
             <template if:true={showPanicOnly}>
+                <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                        data-alert-type="Panic Alert" onclick={handleRefresh}
+                        class="slds-m-right_xx-small"></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                        alternative-text="Restore Dismissed Panic Alerts"
+                        title="Restore Dismissed Panic Alerts" data-alert-type="Panic Alert"
+                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                        alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
+                        data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
+                </div>
                 <template if:true={hasPanicAlerts}>
                     <ul class="slds-notification-list">
                         <template for:each={panicAlerts} for:item="alert">

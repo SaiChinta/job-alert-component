@@ -1,7 +1,7 @@
 /**
  * @description Test class for FS_AlertCenterUtilityController and FS_ServiceAppointmentTrigger.
  * Validates active alert queries, CMDT settings, global acknowledgement, personal dismissal,
- * revert-to-new behavior, undo functionality, Gantt filter event publication,
+ * revert-to-new behavior, type-scoped undo, Gantt filter event publication,
  * and Service Appointment trigger field population and automatic alert creation.
  */
 @IsTest
@@ -331,7 +331,7 @@ private class FS_AlertCenterUtilityControllerTest {
     }
 
     /**
-     * @description Tests undoing all dismissals for the current user.
+     * @description Tests undoing today's High Priority Alert dismissals for the current user.
      */
     @IsTest
     static void testUndoAllDismissals() {
@@ -341,12 +341,112 @@ private class FS_AlertCenterUtilityControllerTest {
         System.assertEquals(0, FS_AlertCenterUtilityController.getActiveAlerts('test-cache-buster').size(), 'Alert should be hidden initially.');
 
         Test.startTest();
-        FS_AlertCenterUtilityController.undoAllDismissals();
+        FS_AlertCenterUtilityController.undoAllDismissals('High Priority Alert');
         Test.stopTest();
 
         System.assertEquals(1, FS_AlertCenterUtilityController.getActiveAlerts('test-cache-buster').size(), 'Alert should reappear after undoing dismissals.');
         List<FS_Alert_Dismissal__c> dismissals = [SELECT Id FROM FS_Alert_Dismissal__c];
         System.assertEquals(0, dismissals.size(), 'The dismissal records should be deleted.');
+    }
+
+    /**
+     * @description Tests that undoing High Priority dismissals does not restore Panic dismissals.
+     */
+    @IsTest
+    static void testUndoDismissalsDoesNotRestoreOtherType() {
+        ServiceTerritory childTerritory = [
+            SELECT Id
+            FROM ServiceTerritory
+            WHERE Name = 'Civil UU - METRO NORTH'
+            LIMIT 1
+        ];
+        FS_AlertCenter__c priorityAlert = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Alert_Type__c = 'High Priority Alert'
+            LIMIT 1
+        ];
+        FS_AlertCenter__c panicAlert = new FS_AlertCenter__c(
+            Alert_Type__c = 'Panic Alert',
+            Service_Territory__c = childTerritory.Id,
+            Status__c = 'New'
+        );
+        insert panicAlert;
+
+        insert new List<FS_Alert_Dismissal__c>{
+            new FS_Alert_Dismissal__c(AlertCenter__c = priorityAlert.Id, User__c = UserInfo.getUserId()),
+            new FS_Alert_Dismissal__c(AlertCenter__c = panicAlert.Id, User__c = UserInfo.getUserId())
+        };
+
+        Test.startTest();
+        FS_AlertCenterUtilityController.undoAllDismissals('High Priority Alert');
+        Test.stopTest();
+
+        List<FS_Alert_Dismissal__c> remaining = [
+            SELECT AlertCenter__c
+            FROM FS_Alert_Dismissal__c
+        ];
+        System.assertEquals(1, remaining.size(), 'Only the Panic Alert dismissal should remain.');
+        System.assertEquals(panicAlert.Id, remaining[0].AlertCenter__c, 'The remaining dismissal should be the Panic Alert.');
+    }
+
+    /**
+     * @description Tests that undoing Panic dismissals does not restore High Priority dismissals.
+     */
+    @IsTest
+    static void testUndoDismissalsPanicDoesNotRestorePriority() {
+        ServiceTerritory childTerritory = [
+            SELECT Id
+            FROM ServiceTerritory
+            WHERE Name = 'Civil UU - METRO NORTH'
+            LIMIT 1
+        ];
+        FS_AlertCenter__c priorityAlert = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Alert_Type__c = 'High Priority Alert'
+            LIMIT 1
+        ];
+        FS_AlertCenter__c panicAlert = new FS_AlertCenter__c(
+            Alert_Type__c = 'Panic Alert',
+            Service_Territory__c = childTerritory.Id,
+            Status__c = 'New'
+        );
+        insert panicAlert;
+
+        insert new List<FS_Alert_Dismissal__c>{
+            new FS_Alert_Dismissal__c(AlertCenter__c = priorityAlert.Id, User__c = UserInfo.getUserId()),
+            new FS_Alert_Dismissal__c(AlertCenter__c = panicAlert.Id, User__c = UserInfo.getUserId())
+        };
+
+        Test.startTest();
+        FS_AlertCenterUtilityController.undoAllDismissals('Panic Alert');
+        Test.stopTest();
+
+        List<FS_Alert_Dismissal__c> remaining = [
+            SELECT AlertCenter__c
+            FROM FS_Alert_Dismissal__c
+        ];
+        System.assertEquals(1, remaining.size(), 'Only the High Priority Alert dismissal should remain.');
+        System.assertEquals(priorityAlert.Id, remaining[0].AlertCenter__c, 'The remaining dismissal should be the High Priority Alert.');
+    }
+
+    /**
+     * @description Tests that a blank or unknown alert type does not delete dismissals.
+     */
+    @IsTest
+    static void testUndoDismissalsIgnoresBlankAndUnknownType() {
+        FS_AlertCenter__c alert = [SELECT Id FROM FS_AlertCenter__c LIMIT 1];
+        insert new FS_Alert_Dismissal__c(AlertCenter__c = alert.Id, User__c = UserInfo.getUserId());
+
+        Test.startTest();
+        FS_AlertCenterUtilityController.undoAllDismissals(null);
+        FS_AlertCenterUtilityController.undoAllDismissals('');
+        FS_AlertCenterUtilityController.undoAllDismissals('Unknown Type');
+        Test.stopTest();
+
+        List<FS_Alert_Dismissal__c> dismissals = [SELECT Id FROM FS_Alert_Dismissal__c];
+        System.assertEquals(1, dismissals.size(), 'Blank or unknown alert types should not delete dismissals.');
     }
 
     /**
