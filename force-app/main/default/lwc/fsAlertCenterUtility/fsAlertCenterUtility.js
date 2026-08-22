@@ -244,7 +244,7 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         }
         const hasPanic = newAlerts.some((alert) => alert.alertType === ALERT_TYPE_PANIC);
         if (hasPanic) {
-            this.showToast('New Panic Alert', 'A field resource triggered a panic alert in your territory.', 'error', 'sticky');
+            this.showToast('New Panic Alert', 'A field resource in your territory has triggered a panic alert.', 'error', 'sticky');
         } else {
             this.showToast('New High Priority Job', 'A new high-priority job has been assigned to your Territory.', 'warning', 'sticky');
         }
