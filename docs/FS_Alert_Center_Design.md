@@ -20,6 +20,7 @@ This document describes the data model, configuration, creation rules, dispatche
 | Field technician | Field Service Mobile global action (`fsMobilePanicButton`) | Optional nature picklist, then SOS create |
 | Admin | Custom Metadata `FS_Alert_Center_Setting.Default_Setting` | Enable Priority Alerts, Panic Alerts, or both; set priority values |
 | Admin | Hierarchy custom setting `FS_Trigger_Bypass_Setting__c` | Bypass the Service Appointment trigger |
+| Admin | Service Appointment record type **Field Services** | Assign (and preferably default) on Field Service profiles so SA automation runs |
 | Admin / auditor | FS Alert Center list views and tabs | Inspect all alerts outside the utility |
 
 ## 3. End-to-end flow
@@ -134,12 +135,18 @@ Personal hide record. Lookup `AlertCenter__c` to the alert; lookup `User__c` to 
 
 ### 4.4 Service Appointment helper fields
 
-The trigger copies `ParentRecordId` onto:
+The trigger copies `ParentRecordId` onto **Field Services** appointments only:
 
 - `FS_Work_Order__c` when the parent is a Work Order
 - `FS_Work_Order_Line_Item__c` (and then the parent Work Order) when the parent is a Work Order Line Item
 
 Job alert creation reads **Work Order Line Item Priority**, then **Work Order Priority**. The job card displays `ServiceAppointment.Priority__c`.
+
+### 4.5 Service Appointment record type
+
+Packaged record type **Field Services** (`Field_Services`) on `ServiceAppointment`. `FS_ServiceAppointmentTriggerHandler` resolves the Id from describe (`getRecordTypeInfosByDeveloperName`) and returns immediately when no remaining rows use that type. Mixed DML batches process only Field Services rows.
+
+Permission set **FS Alert Center Component Access** grants visibility to this record type. It does not set the profile default. Existing appointments are not converted.
 
 ## 5. Configurability — Priority Alerts, Panic Alerts, or both
 
@@ -175,12 +182,13 @@ Runs on Service Appointment **after insert** and **after update**.
 All of the following must be true:
 
 1. Hierarchy setting `Bypass_Service_Appointment_Trigger__c` is not true for the running user/profile/org.
-2. `Default_Setting` exists.
-3. `Priority_Alerts_Enabled__c` is true.
-4. The appointment is new, **or** `FS_Work_Order__c` / `FS_Work_Order_Line_Item__c` changed (parent lookups were populated or re-parented). A priority-only edit on the Work Order that does not change those lookups does **not** recreate an alert.
-5. No `FS_AlertCenter__c` already exists for that Service Appointment (one job alert per SA).
-6. Computed priority is not null: WOLI `Priority` if present, otherwise Work Order `Priority`.
-7. That value, trimmed and lowercased, is in `Alert_Priorities__c`.
+2. `RecordTypeId` is the packaged **Field Services** record type (`Field_Services`). Other business units’ appointments are ignored. Parent lookup population is skipped for those rows as well.
+3. `Default_Setting` exists.
+4. `Priority_Alerts_Enabled__c` is true.
+5. The appointment is new, **or** `FS_Work_Order__c` / `FS_Work_Order_Line_Item__c` changed (parent lookups were populated or re-parented). A priority-only edit on the Work Order that does not change those lookups does **not** recreate an alert.
+6. No `FS_AlertCenter__c` already exists for that Service Appointment (one job alert per SA).
+7. Computed priority is not null: WOLI `Priority` if present, otherwise Work Order `Priority`.
+8. That value, trimmed and lowercased, is in `Alert_Priorities__c`.
 
 Insert payload: `Alert_Type__c = High Priority Alert`, `Status__c = New`, Service Appointment, Service Territory from `ServiceAppointment.ServiceTerritoryId`.
 
@@ -188,7 +196,9 @@ Insert payload: `Alert_Type__c = High Priority Alert`, `Status__c = New`, Servic
 flowchart TD
     Start[SA after insert or update] --> Bypass{Trigger bypass?}
     Bypass -->|yes| Stop1[No alert]
-    Bypass -->|no| Flag{Priority_Alerts_Enabled?}
+    Bypass -->|no| Rt{RecordType Field_Services?}
+    Rt -->|no| Stop1
+    Rt -->|yes| Flag{Priority_Alerts_Enabled?}
     Flag -->|no| Stop1
     Flag -->|yes| Parent{Insert or parent lookup changed?}
     Parent -->|no| Stop1
@@ -331,7 +341,7 @@ List views are **not** Gantt-territory scoped. They show org data the user can a
 ## 12. Real-time, security, and runtime notes
 
 - Alert queries and DML in the utility controller use `SYSTEM_MODE` / `as system` so dispatchers see alerts in loaded territories without each alert being shared to them. CMDT and some trigger SOQL use `WITH SECURITY_ENFORCED`.
-- Permission set **FS Alert Center Component Access** grants object/FLS for Alert Center, Dismissal, Apex, tabs, Service Resource / STM read, Nature, User Phone and Employee Number read, and related SA fields.
+- Permission set **FS Alert Center Component Access** grants object/FLS for Alert Center, Dismissal, Apex, tabs, Service Resource / STM read, Nature, User Phone and Employee Number read, related SA fields, and the Service Appointment **Field Services** record type.
 - CDC member `FS_ChangeEvents_AlertCenter_ChangeEvent` selects `FS_AlertCenter__ChangeEvent` on channel `ChangeEvents`.
 - Global publisher layout **FS Mobile Global Layout** puts `FS_Mobile_Panic_Button` in `platformActionList` (LWC actions cannot go in `quickActionList`). A Classic `quickActionList` (New Task, New Event, Log a Call) is required for deploy. Assign the layout to **Field Service Technician** in Setup; profile assignment is not packaged.
 - If source tracking is on in the target sandbox, deploy with `--ignore-conflicts` when local package changes are the source of truth.
@@ -343,6 +353,7 @@ List views are **not** Gantt-territory scoped. They show org data the user can a
 | LWC | `fsAlertCenterUtility`, `fsMobilePanicButton` |
 | Apex | `FS_AlertCenterUtilityController`, `FS_AlertCenterUtilityControllerTest`, `FS_ServiceAppointmentTriggerHandler` |
 | Trigger | `FS_ServiceAppointmentTrigger` |
+| Record type | `ServiceAppointment.Field_Services` |
 | Quick Action | `FS_Mobile_Panic_Button` |
 | Static resource | `FS_AlertBuzzer` |
 | Flexipages | `FS_AlertCenter_Record_Page`, `FS_Alert_Dismissal_Record_Page` |
@@ -352,6 +363,7 @@ List views are **not** Gantt-territory scoped. They show org data the user can a
 ## 14. Known constraints
 
 - One High Priority Alert per Service Appointment; later priority changes do not insert another row unless the parent lookups change and no row exists.
+- High Priority Alert automation runs only for Service Appointments with record type **Field Services**. Other BUs’ appointments are skipped. Existing appointments are not converted by this package.
 - Panic without a primary Service Territory Member is stored but hidden from the utility.
 - Restore dismissed only covers **today’s** personal dismissals **for the type whose Undo was used**.
 - Gantt filter applies to job cards only.

@@ -97,11 +97,12 @@ Handler: `FS_ServiceAppointmentTrigger` → `FS_ServiceAppointmentTriggerHandler
 All of the following must be true:
 
 1. Hierarchy custom setting **FS Trigger Bypass Setting** → `Bypass_Service_Appointment_Trigger__c` is not true for the running user.
-2. `Default_Setting` exists and `Priority_Alerts_Enabled__c` is true.
-3. The Service Appointment is **inserted**, or `FS_Work_Order__c` / `FS_Work_Order_Line_Item__c` **changed** (parent lookups populated or re-parented). Changing only WO/WOLI priority without those lookup changes does not create a new alert.
-4. No existing `FS_AlertCenter__c` for that Service Appointment (one job alert per SA).
-5. Computed priority is not blank: **Work Order Line Item.Priority** if present, otherwise **Work Order.Priority**.
-6. That value (trimmed, lowercased) is in `Alert_Priorities__c`.
+2. The Service Appointment record type is **Field Services** (`Field_Services`). Other record types skip lookup population and alert creation.
+3. `Default_Setting` exists and `Priority_Alerts_Enabled__c` is true.
+4. The Service Appointment is **inserted**, or `FS_Work_Order__c` / `FS_Work_Order_Line_Item__c` **changed** (parent lookups populated or re-parented). Changing only WO/WOLI priority without those lookup changes does not create a new alert.
+5. No existing `FS_AlertCenter__c` for that Service Appointment (one job alert per SA).
+6. Computed priority is not blank: **Work Order Line Item.Priority** if present, otherwise **Work Order.Priority**.
+7. That value (trimmed, lowercased) is in `Alert_Priorities__c`.
 
 Created record: `Alert_Type__c = High Priority Alert`, `Status__c = New`, Service Appointment, Service Territory from the appointment.
 
@@ -268,7 +269,7 @@ Use the **utility** for live, territory-scoped work. Use **list views** for sear
 
 Assign permission set **FS Alert Center Component Access** (`FS_AlertCenter_Component_Access`).
 
-It includes Apex access, Alert Center and Dismissal CRUD, related FLS (including Nature of the Emergency), User Phone and Employee Number read, Service Resource and Service Territory Member read, and object tabs.
+It includes Apex access, Alert Center and Dismissal CRUD, related FLS (including Nature of the Emergency), User Phone and Employee Number read, Service Resource and Service Territory Member read, Service Appointment **Field Services** record type, and object tabs.
 
 Utility queries/DML run in system mode so dispatchers see alerts in **loaded Gantt territories** without each alert being shared to them. CMDT reads and some trigger queries use `WITH SECURITY_ENFORCED`.
 
@@ -354,7 +355,7 @@ The global publisher layout includes the panic action in **Mobile and Lightning 
 
 ## Post-deployment setup
 
-1. Assign **FS Alert Center Component Access** to dispatchers (and to anyone who must create or see Alert Center data).
+1. Assign **FS Alert Center Component Access** to dispatchers (and to anyone who must create or see Alert Center data). This permission set includes the Service Appointment **Field Services** record type.
 2. Add **FS Alert Center** (`fsAlertCenterUtility`) to the Lightning app **utility bar**.
 3. Confirm Change Data Capture includes `FS_AlertCenter__c` (packaged as `FS_ChangeEvents_AlertCenter_ChangeEvent` on the ChangeEvents channel).
 4. Set **Default Setting** CMDT flags for Priority Alerts / Panic Alerts / priorities.
@@ -362,6 +363,7 @@ The global publisher layout includes the panic action in **Mobile and Lightning 
 6. Prime `FS_AlertCenter__c`, `ServiceResource`, and `ServiceTerritoryMember` in the Field Service Mobile Offline Brief.
 7. Ensure technicians have a **Service Resource** linked to their User and a **primary** Service Territory Member so panic rows get a territory and appear on dispatcher utilities.
 8. Dispatchers must **load Gantt territories** or the utility stays empty.
+9. On Field Service profiles (or equivalent permission set groups), assign the Service Appointment record type **Field Services** and set it as the **default** for users who create appointments from the Gantt or mobile. The permission set only makes the record type visible; it does not set the profile default. Existing appointments keep their current record type; they will not run this automation until updated to Field Services (no conversion job is packaged).
 
 Optional: set **FS Trigger Bypass Setting** at org, profile, or user level to skip the Service Appointment trigger during data loads.
 
@@ -373,7 +375,8 @@ Optional: set **FS Trigger Bypass Setting** at org, profile, or user level to sk
 | `FS_Alert_Dismissal__c` | Custom object | Per-user hide |
 | `FS_Alert_Center_Setting__mdt` | Custom metadata | Feature flags and priorities |
 | `FS_Trigger_Bypass_Setting__c` | Hierarchy custom setting | Skip SA trigger |
-| `FS_ServiceAppointmentTrigger` | Trigger | Parent lookups + job alerts |
+| `FS_ServiceAppointmentTrigger` | Trigger | Parent lookups + job alerts for Field Services SAs |
+| `ServiceAppointment.Field_Services` | Record type | Gates SA trigger automation |
 | `fsAlertCenterUtility` | LWC | Dispatcher utility |
 | `fsMobilePanicButton` | LWC | Technician SOS |
 | `FS_Mobile_Panic_Button` | Global quick action | Hosts the SOS LWC |

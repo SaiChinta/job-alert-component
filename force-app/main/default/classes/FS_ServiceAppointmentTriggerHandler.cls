@@ -3,6 +3,8 @@
  */
 public with sharing class FS_ServiceAppointmentTriggerHandler {
 
+    private static final String SA_RECORD_TYPE_DEV_NAME = 'Field_Services';
+
     /**
      * @description Main entry point for ServiceAppointment trigger routing.
      * @param newRecords The list of new records from trigger context.
@@ -10,26 +12,62 @@ public with sharing class FS_ServiceAppointmentTriggerHandler {
      * @param operationType The current System.TriggerOperation value.
      */
     public static void handleTrigger(List<ServiceAppointment> newRecords, Map<Id, ServiceAppointment> oldMap, System.TriggerOperation operationType) {
-        // Query custom setting bypass
         FS_Trigger_Bypass_Setting__c bypass = FS_Trigger_Bypass_Setting__c.getInstance();
         if (bypass != null && bypass.Bypass_Service_Appointment_Trigger__c) {
             return;
         }
 
+        List<ServiceAppointment> scopedRecords = filterFieldServicesAppointments(newRecords);
+        if (scopedRecords.isEmpty()) {
+            return;
+        }
+
         switch on operationType {
             when BEFORE_INSERT {
-                populateParentFields(newRecords);
+                populateParentFields(scopedRecords);
             }
             when BEFORE_UPDATE {
-                populateParentFields(newRecords);
+                populateParentFields(scopedRecords);
             }
             when AFTER_INSERT {
-                createJobAlertsIfNeeded(newRecords, null);
+                createJobAlertsIfNeeded(scopedRecords, null);
             }
             when AFTER_UPDATE {
-                createJobAlertsIfNeeded(newRecords, oldMap);
+                createJobAlertsIfNeeded(scopedRecords, oldMap);
             }
         }
+    }
+
+    /**
+     * @description Returns the Field Services record type Id for Service Appointment, or null if it is not in the org.
+     * @return The Field_Services record type Id, or null.
+     */
+    private static Id getFieldServicesRecordTypeId() {
+        Schema.RecordTypeInfo info = Schema.SObjectType.ServiceAppointment.getRecordTypeInfosByDeveloperName()
+            .get(SA_RECORD_TYPE_DEV_NAME);
+        if (info == null) {
+            return null;
+        }
+        return info.getRecordTypeId();
+    }
+
+    /**
+     * @description Keeps only Service Appointments whose record type is Field Services.
+     * @param records Trigger new records.
+     * @return Appointments that use the Field_Services record type.
+     */
+    private static List<ServiceAppointment> filterFieldServicesAppointments(List<ServiceAppointment> records) {
+        List<ServiceAppointment> scoped = new List<ServiceAppointment>();
+        Id fieldServicesRtId = getFieldServicesRecordTypeId();
+        if (fieldServicesRtId == null || records == null) {
+            return scoped;
+        }
+        for (ServiceAppointment sa : records) {
+            if (sa.RecordTypeId == fieldServicesRtId) {
+                scoped.add(sa);
+            }
+        }
+        return scoped;
     }
 
     /**

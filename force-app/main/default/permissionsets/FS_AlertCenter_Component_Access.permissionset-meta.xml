@@ -108,6 +108,10 @@
         <object>ServiceTerritoryMember</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
+    <recordTypeVisibilities>
+        <recordType>ServiceAppointment.Field_Services</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
     <tabSettings>
         <tab>FS_AlertCenter__c</tab>
         <visibility>Visible</visibility>

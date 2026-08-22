@@ -2,7 +2,7 @@
  * @description Test class for FS_AlertCenterUtilityController and FS_ServiceAppointmentTrigger.
  * Validates active alert queries, CMDT settings, global acknowledgement, personal dismissal,
  * revert-to-new behavior, type-scoped undo, Gantt filter event publication,
- * and Service Appointment trigger field population and automatic alert creation.
+ * Service Appointment Field Services record type gating, and automatic alert creation.
  */
 @IsTest
 private class FS_AlertCenterUtilityControllerTest {
@@ -64,7 +64,8 @@ private class FS_AlertCenterUtilityControllerTest {
             ServiceTerritoryId = childTerritory.Id,
             EarliestStartTime = DateTime.now(),
             DueDate = DateTime.now().addDays(7),
-            Status = 'None'
+            Status = 'None',
+            RecordTypeId = getFieldServicesRecordTypeId()
         );
         insert sa;
 
@@ -82,6 +83,17 @@ private class FS_AlertCenterUtilityControllerTest {
             Alert_Type__c = 'High Priority Alert'
         );
         Test.stopTest();
+    }
+
+    /**
+     * @description Returns the packaged Field Services record type Id for Service Appointment.
+     * @return The Field_Services record type Id.
+     */
+    private static Id getFieldServicesRecordTypeId() {
+        Schema.RecordTypeInfo info = Schema.SObjectType.ServiceAppointment.getRecordTypeInfosByDeveloperName()
+            .get('Field_Services');
+        System.assertNotEquals(null, info, 'The Field_Services record type must exist on Service Appointment.');
+        return info.getRecordTypeId();
     }
 
     /**
@@ -475,7 +487,8 @@ private class FS_AlertCenterUtilityControllerTest {
             ServiceTerritoryId = territory.Id,
             EarliestStartTime = DateTime.now(),
             DueDate = DateTime.now().addDays(7),
-            Status = 'None'
+            Status = 'None',
+            RecordTypeId = getFieldServicesRecordTypeId()
         );
         insert saHigh;
         Test.stopTest();
@@ -495,5 +508,61 @@ private class FS_AlertCenterUtilityControllerTest {
         ];
         System.assertEquals(1, alerts.size(), 'An Alert Center record should have been automatically generated for the High priority Service Appointment.');
         System.assertEquals('High Priority Alert', alerts[0].Alert_Type__c, 'Trigger-created alerts should be High Priority Alert type.');
+    }
+
+    /**
+     * @description Tests that before-insert lookup population is skipped when the record type is not Field Services.
+     */
+    @IsTest
+    static void testTriggerSkipsNonFieldServicesBeforeInsert() {
+        WorkOrderLineItem woli = [SELECT Id FROM WorkOrderLineItem LIMIT 1];
+        ServiceAppointment sa = new ServiceAppointment(
+            ParentRecordId = woli.Id,
+            RecordTypeId = UserInfo.getUserId()
+        );
+
+        Test.startTest();
+        FS_ServiceAppointmentTriggerHandler.handleTrigger(
+            new List<ServiceAppointment>{ sa },
+            null,
+            System.TriggerOperation.BEFORE_INSERT
+        );
+        Test.stopTest();
+
+        System.assertEquals(null, sa.FS_Work_Order_Line_Item__c, 'WOLI lookup should not be populated for a non-Field Services record type.');
+        System.assertEquals(null, sa.FS_Work_Order__c, 'Work Order lookup should not be populated for a non-Field Services record type.');
+    }
+
+    /**
+     * @description Tests that after-insert alert creation is skipped when the record type is not Field Services.
+     */
+    @IsTest
+    static void testTriggerSkipsNonFieldServicesAfterInsert() {
+        ServiceAppointment sa = [
+            SELECT Id, RecordTypeId, FS_Work_Order__c, FS_Work_Order_Line_Item__c
+            FROM ServiceAppointment
+            LIMIT 1
+        ];
+        sa.RecordTypeId = UserInfo.getUserId();
+        Integer alertCountBefore = [
+            SELECT COUNT()
+            FROM FS_AlertCenter__c
+            WHERE Alert_Type__c = 'High Priority Alert'
+        ];
+
+        Test.startTest();
+        FS_ServiceAppointmentTriggerHandler.handleTrigger(
+            new List<ServiceAppointment>{ sa },
+            null,
+            System.TriggerOperation.AFTER_INSERT
+        );
+        Test.stopTest();
+
+        Integer alertCountAfter = [
+            SELECT COUNT()
+            FROM FS_AlertCenter__c
+            WHERE Alert_Type__c = 'High Priority Alert'
+        ];
+        System.assertEquals(alertCountBefore, alertCountAfter, 'A non-Field Services record type should not create a High Priority Alert.');
     }
 }
