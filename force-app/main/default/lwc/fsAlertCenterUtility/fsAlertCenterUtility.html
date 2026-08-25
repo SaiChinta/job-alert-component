@@ -189,6 +189,8 @@
             </template>
 
             <template if:true={showJobsOnly}>
+                <lightning-tabset active-tab-value="jobs">
+                    <lightning-tab label={priorityTabLabel} value="jobs">
                 <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
                     <lightning-button-icon icon-name="utility:refresh" variant="bare"
                         alternative-text="Sync Territories" title="Sync Territory Filters"
@@ -272,9 +274,13 @@
                         No priority alerts match your loaded filters.
                     </div>
                 </template>
+                    </lightning-tab>
+                </lightning-tabset>
             </template>
 
             <template if:true={showPanicOnly}>
+                <lightning-tabset active-tab-value="panic">
+                    <lightning-tab label={panicTabLabel} value="panic">
                 <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
                     <lightning-button-icon icon-name="utility:refresh" variant="bare"
                         alternative-text="Sync Territories" title="Sync Territory Filters"
@@ -353,6 +359,8 @@
                         No panic alerts match your loaded filters.
                     </div>
                 </template>
+                    </lightning-tab>
+                </lightning-tabset>
             </template>
         </div>
 

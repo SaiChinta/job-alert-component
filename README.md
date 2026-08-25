@@ -80,11 +80,11 @@ Utility layout from the two flags:
 | Priority | Panic | What dispatchers see |
 |---|---|---|
 | true | true | Tabs **Priority Alerts (n)** and **Panic Alerts (n)**, each with its own Sync / Undo / Dismiss All toolbar |
-| true | false | Priority list plus that type’s toolbar |
-| false | true | Panic list plus that type’s toolbar |
+| true | false | Tab **Priority Alerts (n)** with that type’s toolbar |
+| false | true | Tab **Panic Alerts (n)** with that type’s toolbar |
 | false | false | Empty panel |
 
-The Salesforce utility item label stays `Alert Center (n)` (combined count of enabled types). Each tab label carries **that type’s** count. If only Panic is enabled, the panel opens on the Panic list.
+The Salesforce utility item label stays `Alert Center (n)` (combined count of enabled types). Each tab label carries **that type’s** count. If only Panic is enabled, the panel shows a single **Panic Alerts (n)** tab.
 
 Turning Panic off in CMDT does **not** disable the mobile SOS button. It only hides Panic cards in the dispatcher utility.
 

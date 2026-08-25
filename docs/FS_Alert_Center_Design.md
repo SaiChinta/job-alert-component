@@ -163,11 +163,11 @@ Utility tab layout:
 | Priority enabled | Panic enabled | Utility UI |
 |---|---|---|
 | true | true | Tabset: **Priority Alerts (n)** and **Panic Alerts (n)**, each with its own Sync / Undo / Dismiss All toolbar |
-| true | false | Priority list plus that type’s toolbar |
-| false | true | Panic list plus that type’s toolbar |
+| true | false | Tab **Priority Alerts (n)** with that type’s toolbar |
+| false | true | Tab **Panic Alerts (n)** with that type’s toolbar |
 | false | false | Empty panel (no tabs, no cards) |
 
-If only Panic is enabled, the active tab defaults to Panic. The Salesforce utility item label is `Alert Center (n)` using the combined count of enabled types. Each tab label shows **that type’s** count.
+If only Panic is enabled, the panel shows a single **Panic Alerts (n)** tab. The Salesforce utility item label is `Alert Center (n)` using the combined count of enabled types. Each tab label shows **that type’s** count.
 
 Admins change flags in Setup by editing Custom Metadata **FS Alert Center Setting → Default Setting**. No code deploy is required to switch modes.
 
@@ -275,7 +275,7 @@ Resource name (opens the Service Resource). If populated: Phone/Mobile (`User.Ph
 
 The LWC does **not** render an inner `slds-panel__header` titled `Alert Center (n)`. That count already lives on the Salesforce utility item via `updateUtility` / `updatePanel`. Experience Cloud keeps only a minimize row (`isCommunityMode`) so the floating panel can close.
 
-When both types are enabled, tabs are labeled `Priority Alerts (n)` and `Panic Alerts (n)`. When only one type is enabled, that list still has the same toolbar. Empty states: “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
+When both types are enabled, tabs are labeled `Priority Alerts (n)` and `Panic Alerts (n)`. When only one type is enabled, that type still appears as a named tab with the same toolbar. Empty states: “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
 
 Each list starts with Sync, Undo, and Dismiss All. See section 15 for the implementation design.
 
@@ -386,7 +386,7 @@ The previous inner header stacked title, combined count, Sync, Undo, and Dismiss
 | Surface | Shows |
 |---|---|
 | Salesforce utility item / panel label | `Alert Center` or `Alert Center (n)` — combined count of enabled types |
-| Tab (or single-type view) | `Priority Alerts (n)` / `Panic Alerts (n)` — that type’s visible card count |
+| Tab (including single-type mode) | `Priority Alerts (n)` / `Panic Alerts (n)` — that type’s visible card count |
 | Toolbar on each type | Sync, Undo, Dismiss All for **that type** |
 | Experience Cloud | Same toolbars; extra minimize control only (no inner title header) |
 
@@ -399,7 +399,7 @@ Toolbar buttons set `data-alert-type` to the picklist API value:
 - Priority: `High Priority Alert`
 - Panic: `Panic Alert`
 
-The same toolbar is rendered inside the Priority tab, the Panic tab, `showJobsOnly`, and `showPanicOnly`, so a single-type CMDT mode still has Sync / Undo / Dismiss All. The toolbar is shown even when the list is empty so Undo and Sync remain available.
+The same toolbar is rendered inside the Priority tab, the Panic tab, `showJobsOnly`, and `showPanicOnly`. Single-type CMDT mode still uses a one-tab `lightning-tabset` so the **Priority Alerts (n)** or **Panic Alerts (n)** label stays visible, with Sync / Undo / Dismiss All on that tab even when the list is empty.
 
 ### 15.4 Client handlers
 
