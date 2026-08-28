@@ -21,7 +21,14 @@
             <template if:true={showTabset}>
                 <lightning-tabset active-tab-value={activeTab} onactive={handleTabActive}>
                     <lightning-tab label={priorityTabLabel} value="jobs">
-                        <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                        <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                            <label class="today-only-control" title={todayOnlyHelpText}>
+                                <input type="checkbox" class="today-only-checkbox" checked={showPriorityTodayOnly}
+                                    data-alert-type="High Priority Alert" onchange={handleTodayOnlyChange}
+                                    aria-label="Today only" />
+                                <span class="today-only-label">Today only</span>
+                            </label>
+                            <div class="slds-grid">
                             <lightning-button-icon icon-name="utility:refresh" variant="bare"
                                 alternative-text="Sync Territories" title="Sync Territory Filters"
                                 data-alert-type="High Priority Alert" onclick={handleRefresh}
@@ -33,6 +40,7 @@
                             <lightning-button-icon icon-name="utility:clear" variant="bare"
                                 alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
                                 data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
+                            </div>
                         </div>
                         <template if:true={hasJobAlerts}>
                             <ul class="slds-notification-list">
@@ -101,12 +109,19 @@
                         </template>
                         <template if:false={hasJobAlerts}>
                             <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                                No priority alerts match your loaded filters.
+                                {priorityEmptyMessage}
                             </div>
                         </template>
                     </lightning-tab>
                     <lightning-tab label={panicTabLabel} value="panic">
-                        <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                        <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                            <label class="today-only-control" title={todayOnlyHelpText}>
+                                <input type="checkbox" class="today-only-checkbox" checked={showPanicTodayOnly}
+                                    data-alert-type="Panic Alert" onchange={handleTodayOnlyChange}
+                                    aria-label="Today only" />
+                                <span class="today-only-label">Today only</span>
+                            </label>
+                            <div class="slds-grid">
                             <lightning-button-icon icon-name="utility:refresh" variant="bare"
                                 alternative-text="Sync Territories" title="Sync Territory Filters"
                                 data-alert-type="Panic Alert" onclick={handleRefresh}
@@ -118,6 +133,7 @@
                             <lightning-button-icon icon-name="utility:clear" variant="bare"
                                 alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
                                 data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
+                            </div>
                         </div>
                         <template if:true={hasPanicAlerts}>
                             <ul class="slds-notification-list">
@@ -181,7 +197,7 @@
                         </template>
                         <template if:false={hasPanicAlerts}>
                             <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                                No panic alerts match your loaded filters.
+                                {panicEmptyMessage}
                             </div>
                         </template>
                     </lightning-tab>
@@ -191,7 +207,14 @@
             <template if:true={showJobsOnly}>
                 <lightning-tabset active-tab-value="jobs">
                     <lightning-tab label={priorityTabLabel} value="jobs">
-                <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                    <label class="today-only-control" title={todayOnlyHelpText}>
+                        <input type="checkbox" class="today-only-checkbox" checked={showPriorityTodayOnly}
+                            data-alert-type="High Priority Alert" onchange={handleTodayOnlyChange}
+                            aria-label="Today only" />
+                        <span class="today-only-label">Today only</span>
+                    </label>
+                    <div class="slds-grid">
                     <lightning-button-icon icon-name="utility:refresh" variant="bare"
                         alternative-text="Sync Territories" title="Sync Territory Filters"
                         data-alert-type="High Priority Alert" onclick={handleRefresh}
@@ -203,6 +226,7 @@
                     <lightning-button-icon icon-name="utility:clear" variant="bare"
                         alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
                         data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
+                    </div>
                 </div>
                 <template if:true={hasJobAlerts}>
                     <ul class="slds-notification-list">
@@ -271,7 +295,7 @@
                 </template>
                 <template if:false={hasJobAlerts}>
                     <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                        No priority alerts match your loaded filters.
+                        {priorityEmptyMessage}
                     </div>
                 </template>
                     </lightning-tab>
@@ -281,7 +305,14 @@
             <template if:true={showPanicOnly}>
                 <lightning-tabset active-tab-value="panic">
                     <lightning-tab label={panicTabLabel} value="panic">
-                <div class="tab-action-bar slds-grid slds-grid_align-end slds-p-horizontal_x-small slds-p-top_x-small">
+                <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                    <label class="today-only-control" title={todayOnlyHelpText}>
+                        <input type="checkbox" class="today-only-checkbox" checked={showPanicTodayOnly}
+                            data-alert-type="Panic Alert" onchange={handleTodayOnlyChange}
+                            aria-label="Today only" />
+                        <span class="today-only-label">Today only</span>
+                    </label>
+                    <div class="slds-grid">
                     <lightning-button-icon icon-name="utility:refresh" variant="bare"
                         alternative-text="Sync Territories" title="Sync Territory Filters"
                         data-alert-type="Panic Alert" onclick={handleRefresh}
@@ -293,6 +324,7 @@
                     <lightning-button-icon icon-name="utility:clear" variant="bare"
                         alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
                         data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
+                    </div>
                 </div>
                 <template if:true={hasPanicAlerts}>
                     <ul class="slds-notification-list">
@@ -356,7 +388,7 @@
                 </template>
                 <template if:false={hasPanicAlerts}>
                     <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                        No panic alerts match your loaded filters.
+                        {panicEmptyMessage}
                     </div>
                 </template>
                     </lightning-tab>

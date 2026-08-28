@@ -1,7 +1,7 @@
 /**
  * @description Test class for FS_AlertCenterUtilityController and FS_ServiceAppointmentTrigger.
- * Validates active alert queries, CMDT settings, global acknowledgement, personal dismissal,
- * revert-to-new behavior, type-scoped undo, Gantt filter event publication,
+ * Validates active alert queries, CMDT settings, global acknowledgement, personal dismissal
+ * (including after acknowledge), type-scoped undo, Gantt filter event publication,
  * Service Appointment Field Services record type gating, and automatic alert creation.
  */
 @IsTest
@@ -97,17 +97,50 @@ private class FS_AlertCenterUtilityControllerTest {
     }
 
     /**
-     * @description Tests getAlertCenterSettings against the packaged Default_Setting CMDT record.
+     * @description Applies in-memory Default_Setting values so tests do not depend on org CMDT toggles.
+     * @param priorityEnabled Whether Priority Alerts should be treated as enabled.
+     * @param panicEnabled Whether Panic Alerts should be treated as enabled.
+     */
+    private static void applyAlertCenterSettingsOverride(Boolean priorityEnabled, Boolean panicEnabled) {
+        FS_Alert_Center_Setting__mdt setting = new FS_Alert_Center_Setting__mdt(
+            Priority_Alerts_Enabled__c = priorityEnabled,
+            Panic_Alerts_Enabled__c = panicEnabled,
+            Alert_Priorities__c = 'High,Critical,Jeopardy'
+        );
+        FS_AlertCenterUtilityController.settingsOverride = setting;
+        FS_ServiceAppointmentTriggerHandler.settingsOverride = setting;
+    }
+
+    /**
+     * @description Tests getAlertCenterSettings using a test override, independent of org CMDT toggles.
      */
     @IsTest
     static void testGetAlertCenterSettings() {
+        applyAlertCenterSettingsOverride(true, true);
+
         Test.startTest();
         FS_AlertCenterUtilityController.AlertCenterSettings settings =
             FS_AlertCenterUtilityController.getAlertCenterSettings();
         Test.stopTest();
 
-        System.assertEquals(true, settings.priorityAlertsEnabled, 'Priority alerts should be enabled in Default_Setting.');
-        System.assertEquals(true, settings.panicAlertsEnabled, 'Panic alerts should be enabled in Default_Setting.');
+        System.assertEquals(true, settings.priorityAlertsEnabled, 'Priority alerts should follow the test override.');
+        System.assertEquals(true, settings.panicAlertsEnabled, 'Panic alerts should follow the test override.');
+    }
+
+    /**
+     * @description Tests getAlertCenterSettings when both types are disabled in the test override.
+     */
+    @IsTest
+    static void testGetAlertCenterSettingsDisabled() {
+        applyAlertCenterSettingsOverride(false, false);
+
+        Test.startTest();
+        FS_AlertCenterUtilityController.AlertCenterSettings settings =
+            FS_AlertCenterUtilityController.getAlertCenterSettings();
+        Test.stopTest();
+
+        System.assertEquals(false, settings.priorityAlertsEnabled, 'Priority alerts should be disabled when the override is false.');
+        System.assertEquals(false, settings.panicAlertsEnabled, 'Panic alerts should be disabled when the override is false.');
     }
 
     /**
@@ -245,12 +278,12 @@ private class FS_AlertCenterUtilityControllerTest {
     }
 
     /**
-     * @description Tests that dismissing an already acknowledged alert reverts its status to New.
+     * @description Tests that dismissing an acknowledged alert inserts a personal dismissal
+     * and reverts status to New so it does not resurface for the dismissing user.
      */
     @IsTest
-    static void testDismissAcknowledgedAlertRevertsToNew() {
+    static void testDismissAcknowledgedAlertCreatesDismissal() {
         FS_AlertCenter__c alert = [SELECT Id, Status__c FROM FS_AlertCenter__c LIMIT 1];
-
         alert.Status__c = 'Acknowledged';
         update alert;
 
@@ -258,15 +291,19 @@ private class FS_AlertCenterUtilityControllerTest {
         FS_AlertCenterUtilityController.dismissAlert(alert.Id);
         Test.stopTest();
 
+        FS_AlertCenter__c updatedAlert = [SELECT Status__c FROM FS_AlertCenter__c WHERE Id = :alert.Id];
+        System.assertEquals('New', updatedAlert.Status__c, 'The acknowledged alert should revert back to New.');
+
         List<FS_Alert_Dismissal__c> dismissals = [
-            SELECT Id
+            SELECT Id, User__c
             FROM FS_Alert_Dismissal__c
             WHERE AlertCenter__c = :alert.Id
         ];
-        System.assertEquals(0, dismissals.size(), 'A personal dismissal record should NOT be created for an acknowledged alert.');
+        System.assertEquals(1, dismissals.size(), 'A personal dismissal record should be created when dismissing an acknowledged alert.');
+        System.assertEquals(UserInfo.getUserId(), dismissals[0].User__c, 'Dismissal should be linked to the current user.');
 
-        FS_AlertCenter__c updatedAlert = [SELECT Status__c FROM FS_AlertCenter__c WHERE Id = :alert.Id];
-        System.assertEquals('New', updatedAlert.Status__c, 'The acknowledged alert should revert back to New.');
+        List<FS_AlertCenter__c> activeAlerts = FS_AlertCenterUtilityController.getActiveAlerts('test-cache-buster');
+        System.assertEquals(0, activeAlerts.size(), 'The dismissed alert should not resurface for the dismissing user.');
     }
 
     /**
@@ -309,10 +346,13 @@ private class FS_AlertCenterUtilityControllerTest {
             FROM FS_Alert_Dismissal__c
             WHERE AlertCenter__c = :alert.Id
         ];
-        System.assertEquals(0, dismissals.size(), 'Dismissal should be skipped for Acknowledged alerts during bulk dismiss.');
+        System.assertEquals(1, dismissals.size(), 'A personal dismissal record should be created for Acknowledged alerts during bulk dismiss.');
 
         FS_AlertCenter__c updatedAlert = [SELECT Status__c FROM FS_AlertCenter__c WHERE Id = :alert.Id];
         System.assertEquals('New', updatedAlert.Status__c, 'The Acknowledged alert should revert to New during bulk dismiss.');
+
+        List<FS_AlertCenter__c> activeAlerts = FS_AlertCenterUtilityController.getActiveAlerts('test-cache-buster');
+        System.assertEquals(0, activeAlerts.size(), 'The bulk-dismissed alert should not resurface for the dismissing user.');
     }
 
     /**
@@ -466,6 +506,7 @@ private class FS_AlertCenterUtilityControllerTest {
      */
     @IsTest
     static void testServiceAppointmentTrigger() {
+        applyAlertCenterSettingsOverride(true, true);
         ServiceTerritory territory = [SELECT Id FROM ServiceTerritory WHERE IsActive = true LIMIT 1];
 
         WorkOrder woHigh = new WorkOrder(
@@ -508,6 +549,47 @@ private class FS_AlertCenterUtilityControllerTest {
         ];
         System.assertEquals(1, alerts.size(), 'An Alert Center record should have been automatically generated for the High priority Service Appointment.');
         System.assertEquals('High Priority Alert', alerts[0].Alert_Type__c, 'Trigger-created alerts should be High Priority Alert type.');
+    }
+
+    /**
+     * @description Tests that High Priority Alerts are not created when Priority Alerts are disabled.
+     */
+    @IsTest
+    static void testServiceAppointmentTriggerSkipsWhenPriorityDisabled() {
+        applyAlertCenterSettingsOverride(false, true);
+        ServiceTerritory territory = [SELECT Id FROM ServiceTerritory WHERE IsActive = true LIMIT 1];
+
+        WorkOrder woHigh = new WorkOrder(
+            Status = 'New',
+            Priority = 'High',
+            Description = 'High Priority WO Disabled Flag'
+        );
+        insert woHigh;
+
+        WorkOrderLineItem woliHigh = new WorkOrderLineItem(
+            WorkOrderId = woHigh.Id,
+            Description = 'High Priority WOLI Disabled Flag'
+        );
+        insert woliHigh;
+
+        Test.startTest();
+        ServiceAppointment saHigh = new ServiceAppointment(
+            ParentRecordId = woliHigh.Id,
+            ServiceTerritoryId = territory.Id,
+            EarliestStartTime = DateTime.now(),
+            DueDate = DateTime.now().addDays(7),
+            Status = 'None',
+            RecordTypeId = getFieldServicesRecordTypeId()
+        );
+        insert saHigh;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :saHigh.Id
+        ];
+        System.assertEquals(0, alerts.size(), 'No High Priority Alert should be created when Priority Alerts are disabled.');
     }
 
     /**

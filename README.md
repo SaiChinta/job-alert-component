@@ -13,7 +13,7 @@ Dispatchers use the **FS Alert Center** utility bar LWC (`fsAlertCenterUtility`)
 - Real-time updates via Change Data Capture and empApi (Lightning). Experience Cloud uses 20-second polling.
 - Audio buzzer and utility-bar badge on new relevant alerts.
 - Global **acknowledge** and personal **dismiss**, with **per-type** Dismiss All and restore of today’s dismissals.
-- Tabs **Priority Alerts (n)** and **Panic Alerts (n)**; Sync, Undo, and Dismiss All sit on each type (Salesforce utility chrome keeps the combined `Alert Center (n)` label).
+- Tabs **Priority Alerts (n)** and **Panic Alerts (n)**; each tab has **Today only** (default on), Sync, Undo, and Dismiss All (Salesforce utility chrome keeps the combined `Alert Center (n)` label).
 - Job-card filter icon publishes a Field Service event that **creates and loads a temporary Gantt filter** for that Service Appointment.
 - Packaged list views for All, High Priority, and Panic alerts.
 
@@ -44,7 +44,7 @@ flowchart TD
     subgraph act [Dispatcher action]
         Ack[Acknowledge globally]
         Dis[Dismiss one personally]
-        TabAct[Per-tab Sync Undo Dismiss All]
+        TabAct[Per-tab Today only Sync Undo Dismiss All]
         Filt[Publish Gantt filter event]
     end
 
@@ -79,7 +79,7 @@ Utility layout from the two flags:
 
 | Priority | Panic | What dispatchers see |
 |---|---|---|
-| true | true | Tabs **Priority Alerts (n)** and **Panic Alerts (n)**, each with its own Sync / Undo / Dismiss All toolbar |
+| true | true | Tabs **Priority Alerts (n)** and **Panic Alerts (n)**, each with Today only, Sync / Undo / Dismiss All |
 | true | false | Tab **Priority Alerts (n)** with that type’s toolbar |
 | false | true | Tab **Panic Alerts (n)** with that type’s toolbar |
 | false | false | Empty panel |
@@ -158,16 +158,17 @@ Each enabled type has its own toolbar **above that type’s cards**:
 
 | Control | Icon | Scope |
 |---|---|---|
+| **Today only** | checkbox | Default **checked**. Shows alerts whose `CreatedDate` is the dispatcher’s **local calendar day**. Uncheck to show all undismissed alerts of that type. Independent per tab. Hover text: uncheck shows all; check shows today’s. |
 | **Sync** | refresh | Reloads **all** enabled types from Gantt territories (`loadAlerts`). Same query either tab; the icon is repeated so it is always next to the list you are looking at. |
 | **Undo** | undo | Restores **today’s** personal dismissals for **that type only**. |
-| **Dismiss All** | clear | Personally dismisses **New** cards of **that type only**. Skips acknowledged cards. |
+| **Dismiss All** | clear | Personally dismisses **New** cards **currently visible** on that type (respects Today only). Skips acknowledged cards. |
 
 Tab labels (when both types are enabled):
 
-- `Priority Alerts (n)` — `n` is the count of High Priority Alert cards currently visible to this user
-- `Panic Alerts (n)` — `n` is the count of Panic Alert cards currently visible to this user
+- `Priority Alerts (n)` — `n` is the count of High Priority Alert cards currently visible (after Today only)
+- `Panic Alerts (n)` — `n` is the count of Panic Alert cards currently visible (after Today only)
 
-Empty copy is type-specific: “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
+Empty copy: “No priority alerts for today.” / “No panic alerts for today.” when Today only is checked; otherwise “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
 
 Internal tab values remain `jobs` and `panic`. Toolbar buttons pass the picklist API value via `data-alert-type`:
 
@@ -179,8 +180,8 @@ flowchart LR
     Chrome[Utility chrome Alert Center n]
     PriTab[Priority Alerts n]
     PanicTab[Panic Alerts n]
-    PriBar[Sync Undo Dismiss All]
-    PanicBar[Sync Undo Dismiss All]
+    PriBar[Today only Sync Undo Dismiss All]
+    PanicBar[Today only Sync Undo Dismiss All]
     PriCards[High Priority cards]
     PanicCards[Panic cards]
 
@@ -211,7 +212,7 @@ Card-level Acknowledge and Dismiss are unchanged (one record at a time).
 stateDiagram-v2
     [*] --> New: Job trigger or SOS create
     New --> Acknowledged: Acknowledge
-    Acknowledged --> New: Dismiss while acknowledged
+    Acknowledged --> Hidden: Dismiss while acknowledged
     New --> Hidden: Personal dismissal record
     Hidden --> New: Restore todays dismissals for that type
 ```
@@ -220,8 +221,8 @@ stateDiagram-v2
 |---|---|---|
 | **Acknowledge** (check icon) | Global | Sets Status to `Acknowledged`. Other dispatchers lose the card (they are not LastModifiedBy). The acknowledger still sees it. |
 | **Dismiss** one (close icon) on a **New** alert | Personal | Inserts `FS_Alert_Dismissal__c` for this user. Others still see the alert. |
-| **Dismiss** one on an **Acknowledged** alert | Global revert | Sets Status back to `New` (no dismissal row). The alert returns to other dispatchers in matching territories. |
-| **Dismiss All** (clear icon on a type toolbar) | Personal, that type | Dismisses **New** cards of that type (Priority or Panic). Skips acknowledged cards. Does not touch the other type. |
+| **Dismiss** one on an **Acknowledged** alert | Personal + global revert | Inserts `FS_Alert_Dismissal__c` for this user **and** sets Status back to `New`. The dismisser no longer sees the card. Other dispatchers in matching territories can see it again. |
+| **Dismiss All** (clear icon on a type toolbar) | Personal, that type, visible list | Dismisses **New** cards currently shown on that type (Today only applies). Skips acknowledged cards. Does not touch the other type. |
 | **Restore** (undo icon on a type toolbar) | Personal, that type | Deletes this user’s dismissal rows with `CreatedDate = TODAY` **and** `AlertCenter__r.Alert_Type__c` matching that toolbar. Older dismissals and the other type are not restored. |
 
 ## Dynamic Gantt filter from the job card

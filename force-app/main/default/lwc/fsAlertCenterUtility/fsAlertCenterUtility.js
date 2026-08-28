@@ -23,6 +23,8 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
     @track activeTab = 'jobs';
     @track priorityAlertsEnabled = true;
     @track panicAlertsEnabled = true;
+    @track showPriorityTodayOnly = true;
+    @track showPanicTodayOnly = true;
 
     pollingInterval;
     subscription = {};
@@ -106,11 +108,19 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
     }
 
     get jobAlerts() {
-        return (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_JOB);
+        const typed = (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_JOB);
+        if (!this.showPriorityTodayOnly) {
+            return typed;
+        }
+        return typed.filter((alert) => this.isCreatedToday(alert.createdDate));
     }
 
     get panicAlerts() {
-        return (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_PANIC);
+        const typed = (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_PANIC);
+        if (!this.showPanicTodayOnly) {
+            return typed;
+        }
+        return typed.filter((alert) => this.isCreatedToday(alert.createdDate));
     }
 
     get hasJobAlerts() {
@@ -144,6 +154,38 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         return 'Panic Alerts (' + this.panicAlerts.length + ')';
     }
 
+    get priorityEmptyMessage() {
+        if (this.showPriorityTodayOnly) {
+            return 'No priority alerts for today.';
+        }
+        return 'No priority alerts match your loaded filters.';
+    }
+
+    get panicEmptyMessage() {
+        if (this.showPanicTodayOnly) {
+            return 'No panic alerts for today.';
+        }
+        return 'No panic alerts match your loaded filters.';
+    }
+
+    get todayOnlyHelpText() {
+        return 'Uncheck to show all alerts. Check to show only today\'s alerts.';
+    }
+
+    isCreatedToday(value) {
+        if (!value) {
+            return false;
+        }
+        const created = new Date(value);
+        if (Number.isNaN(created.getTime())) {
+            return false;
+        }
+        const now = new Date();
+        return created.getFullYear() === now.getFullYear()
+            && created.getMonth() === now.getMonth()
+            && created.getDate() === now.getDate();
+    }
+
     toggleCommunityPanel() {
         this.isCommunityPanelOpen = !this.isCommunityPanelOpen;
     }
@@ -158,6 +200,20 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
     handleRefresh() {
         this.loadAlerts(false);
         this.showToast('Synced', 'Territory filters updated', 'success', 'pester');
+    }
+
+    handleTodayOnlyChange(event) {
+        const alertType = this.resolveAlertType(event);
+        let checked = event.target.checked === true;
+        if (event.detail && typeof event.detail.checked === 'boolean') {
+            checked = event.detail.checked;
+        }
+        if (alertType === ALERT_TYPE_PANIC) {
+            this.showPanicTodayOnly = checked;
+        } else if (alertType === ALERT_TYPE_JOB) {
+            this.showPriorityTodayOnly = checked;
+        }
+        this.updateUtilityBar(false);
     }
 
     mapAlertRecord(record) {

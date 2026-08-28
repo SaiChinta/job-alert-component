@@ -6,6 +6,12 @@
 public inherited sharing class FS_AlertCenterUtilityController {
 
     /**
+     * @description Test-only CMDT override so tests do not depend on org Default_Setting toggles.
+     */
+    @TestVisible
+    private static FS_Alert_Center_Setting__mdt settingsOverride;
+
+    /**
      * @description Wrapper for Alert Center CMDT flags consumed by the utility LWC.
      */
     public class AlertCenterSettings {
@@ -50,19 +56,34 @@ public inherited sharing class FS_AlertCenterUtilityController {
         result.priorityAlertsEnabled = false;
         result.panicAlertsEnabled = false;
 
+        FS_Alert_Center_Setting__mdt config = getDefaultSetting();
+        if (config != null) {
+            result.priorityAlertsEnabled = config.Priority_Alerts_Enabled__c == true;
+            result.panicAlertsEnabled = config.Panic_Alerts_Enabled__c == true;
+        }
+        return result;
+    }
+
+    /**
+     * @description Returns Default_Setting CMDT, or a test override when set.
+     * @return The setting record, or null if none exists.
+     */
+    @TestVisible
+    private static FS_Alert_Center_Setting__mdt getDefaultSetting() {
+        if (settingsOverride != null) {
+            return settingsOverride;
+        }
         List<FS_Alert_Center_Setting__mdt> settings = [
-            SELECT Priority_Alerts_Enabled__c, Panic_Alerts_Enabled__c
+            SELECT Priority_Alerts_Enabled__c, Panic_Alerts_Enabled__c, Alert_Priorities__c
             FROM FS_Alert_Center_Setting__mdt
             WHERE DeveloperName = 'Default_Setting'
             WITH SECURITY_ENFORCED
             LIMIT 1
         ];
-
-        if (!settings.isEmpty()) {
-            result.priorityAlertsEnabled = settings[0].Priority_Alerts_Enabled__c;
-            result.panicAlertsEnabled = settings[0].Panic_Alerts_Enabled__c;
+        if (settings.isEmpty()) {
+            return null;
         }
-        return result;
+        return settings[0];
     }
 
     /**
@@ -118,8 +139,8 @@ public inherited sharing class FS_AlertCenterUtilityController {
     }
 
     /**
-     * @description Dismisses an alert locally for the current user.
-     * If the alert is Acknowledged, it reverts to New to reappear globally.
+     * @description Dismisses an alert locally for the current user by inserting a personal dismissal record.
+     * If the alert is Acknowledged, it also reverts to New so other dispatchers can see it again.
      * @param alertId The ID of the FS_AlertCenter__c record.
      */
     @AuraEnabled
@@ -135,17 +156,17 @@ public inherited sharing class FS_AlertCenterUtilityController {
         if (alert.Status__c == 'Acknowledged') {
             alert.Status__c = 'New';
             update as system alert;
-        } else {
-            insert as system new FS_Alert_Dismissal__c(
-                AlertCenter__c = alertId,
-                User__c = UserInfo.getUserId()
-            );
         }
+
+        insert as system new FS_Alert_Dismissal__c(
+            AlertCenter__c = alertId,
+            User__c = UserInfo.getUserId()
+        );
     }
 
     /**
      * @description Bulk dismisses currently visible alerts locally for the current user.
-     * Reverts any Acknowledged alerts back to New globally.
+     * Inserts a personal dismissal for each alert. Reverts any Acknowledged alerts back to New globally.
      * @param alertIds List of FS_AlertCenter__c IDs.
      */
     @AuraEnabled
@@ -168,12 +189,11 @@ public inherited sharing class FS_AlertCenterUtilityController {
             if (alert.Status__c == 'Acknowledged') {
                 alert.Status__c = 'New';
                 alertsToRevert.add(alert);
-            } else {
-                dismissalsToInsert.add(new FS_Alert_Dismissal__c(
-                    AlertCenter__c = alert.Id,
-                    User__c = userId
-                ));
             }
+            dismissalsToInsert.add(new FS_Alert_Dismissal__c(
+                AlertCenter__c = alert.Id,
+                User__c = userId
+            ));
         }
 
         if (!alertsToRevert.isEmpty()) {

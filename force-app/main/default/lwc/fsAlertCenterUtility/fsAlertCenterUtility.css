@@ -72,6 +72,29 @@
     min-height: 2rem;
 }
 
+.today-only-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    min-width: 0;
+    cursor: help;
+}
+
+.today-only-checkbox {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    flex-shrink: 0;
+    cursor: pointer;
+    accent-color: #0176d3;
+}
+
+.today-only-label {
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+
 .location-map-link {
     display: inline-flex;
     align-items: center;

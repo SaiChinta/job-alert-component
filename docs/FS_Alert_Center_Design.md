@@ -162,7 +162,7 @@ Utility tab layout:
 
 | Priority enabled | Panic enabled | Utility UI |
 |---|---|---|
-| true | true | Tabset: **Priority Alerts (n)** and **Panic Alerts (n)**, each with its own Sync / Undo / Dismiss All toolbar |
+| true | true | Tabset: **Priority Alerts (n)** and **Panic Alerts (n)**, each with Today only, Sync / Undo / Dismiss All |
 | true | false | Tab **Priority Alerts (n)** with that type’s toolbar |
 | false | true | Tab **Panic Alerts (n)** with that type’s toolbar |
 | false | false | Empty panel (no tabs, no cards) |
@@ -275,9 +275,9 @@ Resource name (opens the Service Resource). If populated: Phone/Mobile (`User.Ph
 
 The LWC does **not** render an inner `slds-panel__header` titled `Alert Center (n)`. That count already lives on the Salesforce utility item via `updateUtility` / `updatePanel`. Experience Cloud keeps only a minimize row (`isCommunityMode`) so the floating panel can close.
 
-When both types are enabled, tabs are labeled `Priority Alerts (n)` and `Panic Alerts (n)`. When only one type is enabled, that type still appears as a named tab with the same toolbar. Empty states: “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
+When both types are enabled, tabs are labeled `Priority Alerts (n)` and `Panic Alerts (n)`. When only one type is enabled, that type still appears as a named tab with the same toolbar. Each toolbar has a **Today only** checkbox (default checked) that filters to `CreatedDate` on the dispatcher’s local calendar day. Hover text: uncheck shows all alerts; check shows only today’s. Counts and Dismiss All use the visible (filtered) list. Empty states: “No priority alerts for today.” / “No panic alerts for today.” when checked; otherwise the loaded-filters copy.
 
-Each list starts with Sync, Undo, and Dismiss All. See section 15 for the implementation design.
+Each list starts with Today only, Sync, Undo, and Dismiss All. See section 15 for the implementation design.
 
 ## 9. Acknowledge and dismiss
 
@@ -285,7 +285,7 @@ Each list starts with Sync, Undo, and Dismiss All. See section 15 for the implem
 stateDiagram-v2
     [*] --> New: Job trigger or SOS create
     New --> Acknowledged: Acknowledge
-    Acknowledged --> New: Dismiss while acknowledged
+    Acknowledged --> Hidden: Dismiss while acknowledged
     New --> Hidden: Personal dismissal record
     Hidden --> New: Restore todays dismissals for that type
 ```
@@ -297,11 +297,11 @@ Sets `Status__c = Acknowledged`. Because visibility for acknowledged alerts requ
 ### Dismiss one (personal, with a special case)
 
 - If status is **New**: insert `FS_Alert_Dismissal__c` for the current user. Other dispatchers still see it.
-- If status is **Acknowledged**: set status back to **New** (no dismissal row). That **returns the alert to everyone** in the matching territories. Dismiss is therefore “I’m done with this acknowledged item; put it back on the board if needed.”
+- If status is **Acknowledged**: insert `FS_Alert_Dismissal__c` for the current user **and** set status back to **New**. The dismisser no longer sees the card (polling will not bring it back). Other dispatchers in matching territories can see it again.
 
 ### Dismiss all (per type)
 
-Applies to the **type whose toolbar was used** (`data-alert-type` = `High Priority Alert` or `Panic Alert`), including the single-list view when only one type is enabled. Only **non-acknowledged** cards of that type are dismissed. Acknowledged cards of that type stay on screen with an info toast if nothing else remains. The other type is not changed.
+Applies to the **type whose toolbar was used** (`data-alert-type` = `High Priority Alert` or `Panic Alert`), including the single-tab view when only one type is enabled. Only **non-acknowledged** cards **currently visible** on that type are dismissed (Today only applies). Acknowledged cards of that type stay on screen with an info toast if nothing else remains. The other type is not changed.
 
 ### Restore dismissed (per type)
 
@@ -387,7 +387,7 @@ The previous inner header stacked title, combined count, Sync, Undo, and Dismiss
 |---|---|
 | Salesforce utility item / panel label | `Alert Center` or `Alert Center (n)` — combined count of enabled types |
 | Tab (including single-type mode) | `Priority Alerts (n)` / `Panic Alerts (n)` — that type’s visible card count |
-| Toolbar on each type | Sync, Undo, Dismiss All for **that type** |
+| Toolbar on each type | Today only checkbox (default checked), Sync, Undo, Dismiss All for **that type** |
 | Experience Cloud | Same toolbars; extra minimize control only (no inner title header) |
 
 Internal `lightning-tab` values stay `jobs` and `panic` so existing `activeTab` wiring does not change.
@@ -399,10 +399,12 @@ Toolbar buttons set `data-alert-type` to the picklist API value:
 - Priority: `High Priority Alert`
 - Panic: `Panic Alert`
 
-The same toolbar is rendered inside the Priority tab, the Panic tab, `showJobsOnly`, and `showPanicOnly`. Single-type CMDT mode still uses a one-tab `lightning-tabset` so the **Priority Alerts (n)** or **Panic Alerts (n)** label stays visible, with Sync / Undo / Dismiss All on that tab even when the list is empty.
+The same toolbar is rendered inside the Priority tab, the Panic tab, `showJobsOnly`, and `showPanicOnly`. Single-type CMDT mode still uses a one-tab `lightning-tabset` so the **Priority Alerts (n)** or **Panic Alerts (n)** label stays visible. Each bar has a compact **Today only** checkbox (default checked, same size as the refresh icon), plus Sync / Undo / Dismiss All even when the list is empty.
 
 ### 15.4 Client handlers
 
+- `jobAlerts` / `panicAlerts` filter by type, then by local `CreatedDate` when that tab’s **Today only** checkbox is checked (`isCreatedToday`).
+- `handleTodayOnlyChange` reads `data-alert-type` and `checked`; checkboxes are independent; utility count updates.
 - `priorityTabLabel` / `panicTabLabel` format `Priority Alerts (` + `jobAlerts.length` + `)` and the Panic equivalent.
 - `resolveAlertType(event)` reads `event.currentTarget.dataset.alertType`.
 - `alertsForType(alertType)` returns `jobAlerts` or `panicAlerts`.

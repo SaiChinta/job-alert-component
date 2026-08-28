@@ -6,6 +6,12 @@ public with sharing class FS_ServiceAppointmentTriggerHandler {
     private static final String SA_RECORD_TYPE_DEV_NAME = 'Field_Services';
 
     /**
+     * @description Test-only CMDT override so tests do not depend on org Default_Setting toggles.
+     */
+    @TestVisible
+    private static FS_Alert_Center_Setting__mdt settingsOverride;
+
+    /**
      * @description Main entry point for ServiceAppointment trigger routing.
      * @param newRecords The list of new records from trigger context.
      * @param oldMap Map of old records from trigger context.
@@ -71,6 +77,28 @@ public with sharing class FS_ServiceAppointmentTriggerHandler {
     }
 
     /**
+     * @description Returns Default_Setting CMDT, or a test override when set.
+     * @return The setting record, or null if none exists.
+     */
+    @TestVisible
+    private static FS_Alert_Center_Setting__mdt getDefaultSetting() {
+        if (settingsOverride != null) {
+            return settingsOverride;
+        }
+        List<FS_Alert_Center_Setting__mdt> settings = [
+            SELECT Alert_Priorities__c, Priority_Alerts_Enabled__c
+            FROM FS_Alert_Center_Setting__mdt
+            WHERE DeveloperName = 'Default_Setting'
+            WITH SECURITY_ENFORCED
+            LIMIT 1
+        ];
+        if (settings.isEmpty()) {
+            return null;
+        }
+        return settings[0];
+    }
+
+    /**
      * @description Populates lookup relationships FS_Work_Order_Line_Item__c and FS_Work_Order__c before insert/update.
      * @param records The list of ServiceAppointment records to process.
      */
@@ -118,20 +146,12 @@ public with sharing class FS_ServiceAppointmentTriggerHandler {
      * @param oldMap Map of old ServiceAppointment records.
      */
     private static void createJobAlertsIfNeeded(List<ServiceAppointment> records, Map<Id, ServiceAppointment> oldMap) {
-        List<FS_Alert_Center_Setting__mdt> settings = [
-            SELECT Alert_Priorities__c, Priority_Alerts_Enabled__c
-            FROM FS_Alert_Center_Setting__mdt
-            WHERE DeveloperName = 'Default_Setting'
-            WITH SECURITY_ENFORCED
-            LIMIT 1
-        ];
-
-        if (settings.isEmpty()) {
+        FS_Alert_Center_Setting__mdt config = getDefaultSetting();
+        if (config == null) {
             return;
         }
 
-        FS_Alert_Center_Setting__mdt config = settings[0];
-        if (!config.Priority_Alerts_Enabled__c) {
+        if (config.Priority_Alerts_Enabled__c != true) {
             return;
         }
 
