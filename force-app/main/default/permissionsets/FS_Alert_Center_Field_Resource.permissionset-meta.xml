@@ -1,14 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
-    <classAccesses>
-        <apexClass>FS_AlertCenterUtilityController</apexClass>
-        <enabled>true</enabled>
-    </classAccesses>
-    <customMetadataTypeAccesses>
-        <enabled>true</enabled>
-        <name>FS_Alert_Center_Setting__mdt</name>
-    </customMetadataTypeAccesses>
-    <description>Grants access to the FS Alert Center component, panic button, and related schema.</description>
+    <description>Access for field resources to raise a Panic Alert from Field Service Mobile. Assign the packaged FS Mobile Global Layout to the technician profile for the global action.</description>
     <fieldPermissions>
         <editable>true</editable>
         <field>FS_AlertCenter__c.Alert_Type__c</field>
@@ -36,11 +28,6 @@
     </fieldPermissions>
     <fieldPermissions>
         <editable>true</editable>
-        <field>FS_AlertCenter__c.Service_Appointment__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
         <field>FS_AlertCenter__c.Service_Territory__c</field>
         <readable>true</readable>
     </fieldPermissions>
@@ -49,45 +36,15 @@
         <field>FS_AlertCenter__c.Status__c</field>
         <readable>true</readable>
     </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>FS_Alert_Dismissal__c.User__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>ServiceAppointment.FS_Work_Order_Line_Item__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>true</editable>
-        <field>ServiceAppointment.FS_Work_Order__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
-    <fieldPermissions>
-        <editable>false</editable>
-        <field>ServiceAppointment.Priority__c</field>
-        <readable>true</readable>
-    </fieldPermissions>
     <hasActivationRequired>false</hasActivationRequired>
-    <label>FS Alert Center Component Access</label>
-    <license>Salesforce</license>
+    <label>FS Alert Center Field Resource</label>
     <objectPermissions>
         <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
+        <allowDelete>false</allowDelete>
+        <allowEdit>false</allowEdit>
         <allowRead>true</allowRead>
         <modifyAllRecords>false</modifyAllRecords>
         <object>FS_AlertCenter__c</object>
-        <viewAllRecords>false</viewAllRecords>
-    </objectPermissions>
-    <objectPermissions>
-        <allowCreate>true</allowCreate>
-        <allowDelete>true</allowDelete>
-        <allowEdit>true</allowEdit>
-        <allowRead>true</allowRead>
-        <modifyAllRecords>false</modifyAllRecords>
-        <object>FS_Alert_Dismissal__c</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
     <objectPermissions>
@@ -108,16 +65,4 @@
         <object>ServiceTerritoryMember</object>
         <viewAllRecords>false</viewAllRecords>
     </objectPermissions>
-    <recordTypeVisibilities>
-        <recordType>ServiceAppointment.Field_Services</recordType>
-        <visible>true</visible>
-    </recordTypeVisibilities>
-    <tabSettings>
-        <tab>FS_AlertCenter__c</tab>
-        <visibility>Visible</visibility>
-    </tabSettings>
-    <tabSettings>
-        <tab>FS_Alert_Dismissal__c</tab>
-        <visibility>Visible</visibility>
-    </tabSettings>
 </PermissionSet>

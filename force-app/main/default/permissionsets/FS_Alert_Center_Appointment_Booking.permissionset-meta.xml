@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<PermissionSet xmlns="http://soap.sforce.com/2006/04/metadata">
+    <description>Least privilege for external booking users so Field Services Service Appointment saves populate parent lookups and can generate job alerts. No Alert Center UI.</description>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>ServiceAppointment.FS_Work_Order_Line_Item__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>true</editable>
+        <field>ServiceAppointment.FS_Work_Order__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>ServiceAppointment.FSL__InJeopardy__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>ServiceAppointment.Priority__c</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <fieldPermissions>
+        <editable>false</editable>
+        <field>ServiceAppointment.Status</field>
+        <readable>true</readable>
+    </fieldPermissions>
+    <hasActivationRequired>false</hasActivationRequired>
+    <label>FS Alert Center Appointment Booking</label>
+    <recordTypeVisibilities>
+        <recordType>ServiceAppointment.Field_Services</recordType>
+        <visible>true</visible>
+    </recordTypeVisibilities>
+</PermissionSet>

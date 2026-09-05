@@ -14,6 +14,8 @@ import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 
 const ALERT_TYPE_JOB = 'High Priority Alert';
 const ALERT_TYPE_PANIC = 'Panic Alert';
+const ALERT_TYPE_CANCELLATION = 'Cancellation Alert';
+const ALERT_TYPE_JEOPARDY = 'In Jeopardy Alert';
 
 export default class FsAlertCenterUtility extends NavigationMixin(LightningElement) {
     @api isCommunityMode = false;
@@ -23,8 +25,12 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
     @track activeTab = 'jobs';
     @track priorityAlertsEnabled = true;
     @track panicAlertsEnabled = true;
+    @track cancellationAlertsEnabled = false;
+    @track jeopardyAlertsEnabled = false;
     @track showPriorityTodayOnly = true;
     @track showPanicTodayOnly = true;
+    @track showCancellationTodayOnly = true;
+    @track showJeopardyTodayOnly = true;
 
     pollingInterval;
     subscription = {};
@@ -39,15 +45,15 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         if (data) {
             this.priorityAlertsEnabled = data.priorityAlertsEnabled === true;
             this.panicAlertsEnabled = data.panicAlertsEnabled === true;
-            if (!this.priorityAlertsEnabled && this.panicAlertsEnabled) {
-                this.activeTab = 'panic';
-            } else if (this.priorityAlertsEnabled) {
-                this.activeTab = 'jobs';
-            }
+            this.cancellationAlertsEnabled = data.cancellationAlertsEnabled === true;
+            this.jeopardyAlertsEnabled = data.jeopardyAlertsEnabled === true;
+            this.activeTab = this.firstEnabledTab();
             this.updateUtilityBar(false);
         } else if (error) {
             this.priorityAlertsEnabled = false;
             this.panicAlertsEnabled = false;
+            this.cancellationAlertsEnabled = false;
+            this.jeopardyAlertsEnabled = false;
         }
     }
 
@@ -95,32 +101,27 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         return this.isCommunityPanelOpen ? 'community-panel-container open' : 'community-panel-container closed';
     }
 
-    get showTabset() {
-        return this.priorityAlertsEnabled && this.panicAlertsEnabled;
-    }
-
-    get showJobsOnly() {
-        return this.priorityAlertsEnabled && !this.panicAlertsEnabled;
-    }
-
-    get showPanicOnly() {
-        return this.panicAlertsEnabled && !this.priorityAlertsEnabled;
+    get showAnyTabs() {
+        return this.priorityAlertsEnabled
+            || this.panicAlertsEnabled
+            || this.cancellationAlertsEnabled
+            || this.jeopardyAlertsEnabled;
     }
 
     get jobAlerts() {
-        const typed = (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_JOB);
-        if (!this.showPriorityTodayOnly) {
-            return typed;
-        }
-        return typed.filter((alert) => this.isCreatedToday(alert.createdDate));
+        return this.alertsOfType(ALERT_TYPE_JOB, this.showPriorityTodayOnly);
     }
 
     get panicAlerts() {
-        const typed = (this.allAlerts || []).filter((alert) => alert.alertType === ALERT_TYPE_PANIC);
-        if (!this.showPanicTodayOnly) {
-            return typed;
-        }
-        return typed.filter((alert) => this.isCreatedToday(alert.createdDate));
+        return this.alertsOfType(ALERT_TYPE_PANIC, this.showPanicTodayOnly);
+    }
+
+    get cancellationAlerts() {
+        return this.alertsOfType(ALERT_TYPE_CANCELLATION, this.showCancellationTodayOnly);
+    }
+
+    get jeopardyAlerts() {
+        return this.alertsOfType(ALERT_TYPE_JEOPARDY, this.showJeopardyTodayOnly);
     }
 
     get hasJobAlerts() {
@@ -131,6 +132,14 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         return this.panicAlerts.length > 0;
     }
 
+    get hasCancellationAlerts() {
+        return this.cancellationAlerts.length > 0;
+    }
+
+    get hasJeopardyAlerts() {
+        return this.jeopardyAlerts.length > 0;
+    }
+
     get combinedCount() {
         let count = 0;
         if (this.priorityAlertsEnabled) {
@@ -138,6 +147,12 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         }
         if (this.panicAlertsEnabled) {
             count += this.panicAlerts.length;
+        }
+        if (this.cancellationAlertsEnabled) {
+            count += this.cancellationAlerts.length;
+        }
+        if (this.jeopardyAlertsEnabled) {
+            count += this.jeopardyAlerts.length;
         }
         return count;
     }
@@ -154,22 +169,63 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         return 'Panic Alerts (' + this.panicAlerts.length + ')';
     }
 
+    get cancellationTabLabel() {
+        return 'Cancellation Alerts (' + this.cancellationAlerts.length + ')';
+    }
+
+    get jeopardyTabLabel() {
+        return 'In Jeopardy Alerts (' + this.jeopardyAlerts.length + ')';
+    }
+
     get priorityEmptyMessage() {
-        if (this.showPriorityTodayOnly) {
-            return 'No priority alerts for today.';
-        }
-        return 'No priority alerts match your loaded filters.';
+        return this.emptyMessage(this.showPriorityTodayOnly, 'priority');
     }
 
     get panicEmptyMessage() {
-        if (this.showPanicTodayOnly) {
-            return 'No panic alerts for today.';
-        }
-        return 'No panic alerts match your loaded filters.';
+        return this.emptyMessage(this.showPanicTodayOnly, 'panic');
+    }
+
+    get cancellationEmptyMessage() {
+        return this.emptyMessage(this.showCancellationTodayOnly, 'cancellation');
+    }
+
+    get jeopardyEmptyMessage() {
+        return this.emptyMessage(this.showJeopardyTodayOnly, 'in jeopardy');
     }
 
     get todayOnlyHelpText() {
         return 'Uncheck to show all alerts. Check to show only today\'s alerts.';
+    }
+
+    firstEnabledTab() {
+        if (this.priorityAlertsEnabled) {
+            return 'jobs';
+        }
+        if (this.cancellationAlertsEnabled) {
+            return 'cancellation';
+        }
+        if (this.jeopardyAlertsEnabled) {
+            return 'jeopardy';
+        }
+        if (this.panicAlertsEnabled) {
+            return 'panic';
+        }
+        return 'jobs';
+    }
+
+    alertsOfType(alertType, todayOnly) {
+        const typed = (this.allAlerts || []).filter((alert) => alert.alertType === alertType);
+        if (!todayOnly) {
+            return typed;
+        }
+        return typed.filter((alert) => this.isCreatedToday(alert.createdDate));
+    }
+
+    emptyMessage(todayOnly, noun) {
+        if (todayOnly) {
+            return 'No ' + noun + ' alerts for today.';
+        }
+        return 'No ' + noun + ' alerts match your loaded filters.';
     }
 
     isCreatedToday(value) {
@@ -212,6 +268,10 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
             this.showPanicTodayOnly = checked;
         } else if (alertType === ALERT_TYPE_JOB) {
             this.showPriorityTodayOnly = checked;
+        } else if (alertType === ALERT_TYPE_CANCELLATION) {
+            this.showCancellationTodayOnly = checked;
+        } else if (alertType === ALERT_TYPE_JEOPARDY) {
+            this.showJeopardyTodayOnly = checked;
         }
         this.updateUtilityBar(false);
     }
@@ -247,6 +307,8 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
             hasEmployeeNumber: this.hasText(employeeNumber),
             hasNature: this.hasText(natureOfEmergency),
             priority: sa.Priority__c || 'N/A',
+            saStatus: sa.Status || 'N/A',
+            inJeopardyLabel: sa.FSL__InJeopardy__c === true ? 'Yes' : 'No',
             earlyStart: sa.EarliestStartTime,
             dueDate: sa.DueDate,
             address: addressParts.length > 0 ? addressParts.join(', ') : 'No Address Provided',
@@ -301,6 +363,10 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         const hasPanic = newAlerts.some((alert) => alert.alertType === ALERT_TYPE_PANIC);
         if (hasPanic) {
             this.showToast('New Panic Alert', 'A field resource in your territory has triggered a panic alert.', 'error', 'sticky');
+        } else if (newAlerts.some((alert) => alert.alertType === ALERT_TYPE_CANCELLATION)) {
+            this.showToast('New Cancellation Alert', 'A service appointment in your territory was canceled.', 'error', 'sticky');
+        } else if (newAlerts.some((alert) => alert.alertType === ALERT_TYPE_JEOPARDY)) {
+            this.showToast('New In Jeopardy Alert', 'A service appointment in your territory is in jeopardy.', 'warning', 'sticky');
         } else {
             this.showToast('New High Priority Job', 'A new high-priority job has been assigned to your Territory.', 'warning', 'sticky');
         }
@@ -317,6 +383,12 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         }
         if (this.panicAlertsEnabled) {
             records.push(...this.panicAlerts);
+        }
+        if (this.cancellationAlertsEnabled) {
+            records.push(...this.cancellationAlerts);
+        }
+        if (this.jeopardyAlertsEnabled) {
+            records.push(...this.jeopardyAlerts);
         }
         return records;
     }
@@ -390,7 +462,26 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         if (alertType === ALERT_TYPE_JOB) {
             return this.jobAlerts;
         }
+        if (alertType === ALERT_TYPE_CANCELLATION) {
+            return this.cancellationAlerts;
+        }
+        if (alertType === ALERT_TYPE_JEOPARDY) {
+            return this.jeopardyAlerts;
+        }
         return [];
+    }
+
+    restoreLabelForType(alertType) {
+        if (alertType === ALERT_TYPE_PANIC) {
+            return 'panic alerts';
+        }
+        if (alertType === ALERT_TYPE_CANCELLATION) {
+            return 'cancellation alerts';
+        }
+        if (alertType === ALERT_TYPE_JEOPARDY) {
+            return 'in jeopardy alerts';
+        }
+        return 'priority alerts';
     }
 
     handleUndoDismissAll(event) {
@@ -398,7 +489,7 @@ export default class FsAlertCenterUtility extends NavigationMixin(LightningEleme
         if (!alertType) {
             return;
         }
-        const restoredLabel = alertType === ALERT_TYPE_PANIC ? 'panic alerts' : 'priority alerts';
+        const restoredLabel = this.restoreLabelForType(alertType);
         undoAllDismissals({ alertType: alertType })
             .then(() => {
                 this.showToast('Restored', 'Previously dismissed ' + restoredLabel + ' have been restored.', 'success', 'dismissible');

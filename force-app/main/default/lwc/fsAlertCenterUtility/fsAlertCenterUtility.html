@@ -18,380 +18,356 @@
         </template>
 
         <div class="slds-panel__body alert-panel-body">
-            <template if:true={showTabset}>
+            <template if:true={showAnyTabs}>
                 <lightning-tabset active-tab-value={activeTab} onactive={handleTabActive}>
-                    <lightning-tab label={priorityTabLabel} value="jobs">
-                        <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
-                            <label class="today-only-control" title={todayOnlyHelpText}>
-                                <input type="checkbox" class="today-only-checkbox" checked={showPriorityTodayOnly}
-                                    data-alert-type="High Priority Alert" onchange={handleTodayOnlyChange}
-                                    aria-label="Today only" />
-                                <span class="today-only-label">Today only</span>
-                            </label>
-                            <div class="slds-grid">
-                            <lightning-button-icon icon-name="utility:refresh" variant="bare"
-                                alternative-text="Sync Territories" title="Sync Territory Filters"
-                                data-alert-type="High Priority Alert" onclick={handleRefresh}
-                                class="slds-m-right_xx-small"></lightning-button-icon>
-                            <lightning-button-icon icon-name="utility:undo" variant="bare"
-                                alternative-text="Restore Dismissed Priority Alerts"
-                                title="Restore Dismissed Priority Alerts" data-alert-type="High Priority Alert"
-                                onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
-                            <lightning-button-icon icon-name="utility:clear" variant="bare"
-                                alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
-                                data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
-                            </div>
-                        </div>
-                        <template if:true={hasJobAlerts}>
-                            <ul class="slds-notification-list">
-                                <template for:each={jobAlerts} for:item="alert">
-                                    <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
-                                        <div class="slds-notification slds-theme_warning slds-p-around_small slds-box slds-box_x-small">
-                                            <div class="slds-notification__body slds-w-full">
-                                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                                    <a href="javascript:void(0);" data-id={alert.saId} onclick={handleNavigate}
-                                                        class="slds-text-heading_small slds-text-link">
-                                                        {alert.saNumber}
-                                                    </a>
-                                                    <lightning-button-icon icon-name="utility:filterList" variant="bare"
-                                                        size="small" alternative-text="Filter Gantt"
-                                                        title="Show only this SA on Gantt" data-id={alert.saId}
-                                                        onclick={handleFilterGantt}
-                                                        class="slds-m-left_small slds-m-right_xxx-small">
-                                                    </lightning-button-icon>
-                                                    <lightning-button-icon icon-name="utility:copy" variant="bare" size="small"
-                                                        alternative-text="Copy SA Number" title="Copy to Clipboard"
-                                                        data-sa={alert.saNumber} onclick={handleCopy}
-                                                        class="slds-m-left_xx-small slds-m-right_x-small"></lightning-button-icon>
-                                                    <span class="slds-text-body_small slds-text-color_default">
-                                                        | <strong>Priority:</strong> {alert.priority}
-                                                    </span>
-                                                </div>
-                                                <div class="slds-text-body_small slds-text-color_default">
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>EarlyStart: </strong>
-                                                        <lightning-formatted-date-time value={alert.earlyStart} year="numeric"
-                                                            month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                        </lightning-formatted-date-time>
-                                                    </p>
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>DueDate: </strong>
-                                                        <lightning-formatted-date-time value={alert.dueDate} year="numeric"
-                                                            month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                        </lightning-formatted-date-time>
-                                                    </p>
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>Territory: </strong>{alert.territoryName}
-                                                    </p>
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>Created: </strong>
-                                                        <lightning-formatted-date-time value={alert.createdDate} year="numeric"
-                                                            month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                        </lightning-formatted-date-time>
-                                                    </p>
-                                                    <p>
-                                                        <strong>Address: </strong>{alert.address}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
-                                                <lightning-button-icon icon-name="utility:check" variant="border-filled"
-                                                    alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
-                                                    onclick={handleAcknowledge}></lightning-button-icon>
-                                                <lightning-button-icon icon-name="utility:close" variant="border-filled"
-                                                    alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
-                                                    onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </template>
-                            </ul>
-                        </template>
-                        <template if:false={hasJobAlerts}>
-                            <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                                {priorityEmptyMessage}
-                            </div>
-                        </template>
-                    </lightning-tab>
-                    <lightning-tab label={panicTabLabel} value="panic">
-                        <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
-                            <label class="today-only-control" title={todayOnlyHelpText}>
-                                <input type="checkbox" class="today-only-checkbox" checked={showPanicTodayOnly}
-                                    data-alert-type="Panic Alert" onchange={handleTodayOnlyChange}
-                                    aria-label="Today only" />
-                                <span class="today-only-label">Today only</span>
-                            </label>
-                            <div class="slds-grid">
-                            <lightning-button-icon icon-name="utility:refresh" variant="bare"
-                                alternative-text="Sync Territories" title="Sync Territory Filters"
-                                data-alert-type="Panic Alert" onclick={handleRefresh}
-                                class="slds-m-right_xx-small"></lightning-button-icon>
-                            <lightning-button-icon icon-name="utility:undo" variant="bare"
-                                alternative-text="Restore Dismissed Panic Alerts"
-                                title="Restore Dismissed Panic Alerts" data-alert-type="Panic Alert"
-                                onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
-                            <lightning-button-icon icon-name="utility:clear" variant="bare"
-                                alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
-                                data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
-                            </div>
-                        </div>
-                        <template if:true={hasPanicAlerts}>
-                            <ul class="slds-notification-list">
-                                <template for:each={panicAlerts} for:item="alert">
-                                    <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
-                                        <div class="slds-notification slds-theme_error slds-p-around_small slds-box slds-box_x-small">
-                                            <div class="slds-notification__body slds-w-full">
-                                                <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                                    <a href="javascript:void(0);" data-id={alert.resourceId} onclick={handleNavigate}
-                                                        class="slds-text-heading_small slds-text-link">
-                                                        {alert.resourceName}
-                                                    </a>
-                                                </div>
-                                                <div class="slds-text-body_small slds-text-color_default">
-                                                    <template if:true={alert.hasPhone}>
-                                                        <p class="slds-m-bottom_xxx-small">
-                                                            <strong>Phone/Mobile: </strong>{alert.phone}
-                                                        </p>
-                                                    </template>
-                                                    <template if:true={alert.hasEmployeeNumber}>
-                                                        <p class="slds-m-bottom_xxx-small">
-                                                            <strong>Employee Number: </strong>{alert.employeeNumber}
-                                                        </p>
-                                                    </template>
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>Territory: </strong>{alert.territoryName}
-                                                    </p>
-                                                    <p class="slds-m-bottom_xxx-small">
-                                                        <strong>Created: </strong>
-                                                        <lightning-formatted-date-time value={alert.createdDate} year="numeric"
-                                                            month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                        </lightning-formatted-date-time>
-                                                    </p>
-                                                    <template if:true={alert.hasNature}>
-                                                        <p class="slds-m-bottom_xxx-small">
-                                                            <strong>Nature of the emergency: </strong>{alert.natureOfEmergency}
-                                                        </p>
-                                                    </template>
-                                                    <template if:true={alert.hasLocation}>
-                                                        <p class="slds-m-bottom_xxx-small slds-grid slds-grid_vertical-align-center">
-                                                            <strong>Reported Location:&nbsp;</strong>
-                                                            <a href={alert.mapUrl} target="_blank" rel="noopener noreferrer" class="location-map-link" title="Open in Google Maps">
-                                                                <lightning-icon icon-name="utility:checkin" size="x-small" alternative-text="Open in Google Maps"></lightning-icon>
-                                                            </a>
-                                                        </p>
-                                                    </template>
-                                                </div>
-                                            </div>
-                                            <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
-                                                <lightning-button-icon icon-name="utility:check" variant="border-filled"
-                                                    alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
-                                                    onclick={handleAcknowledge}></lightning-button-icon>
-                                                <lightning-button-icon icon-name="utility:close" variant="border-filled"
-                                                    alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
-                                                    onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </template>
-                            </ul>
-                        </template>
-                        <template if:false={hasPanicAlerts}>
-                            <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                                {panicEmptyMessage}
-                            </div>
-                        </template>
-                    </lightning-tab>
-                </lightning-tabset>
-            </template>
-
-            <template if:true={showJobsOnly}>
-                <lightning-tabset active-tab-value="jobs">
-                    <lightning-tab label={priorityTabLabel} value="jobs">
-                <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
-                    <label class="today-only-control" title={todayOnlyHelpText}>
-                        <input type="checkbox" class="today-only-checkbox" checked={showPriorityTodayOnly}
-                            data-alert-type="High Priority Alert" onchange={handleTodayOnlyChange}
-                            aria-label="Today only" />
-                        <span class="today-only-label">Today only</span>
-                    </label>
-                    <div class="slds-grid">
-                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
-                        alternative-text="Sync Territories" title="Sync Territory Filters"
-                        data-alert-type="High Priority Alert" onclick={handleRefresh}
-                        class="slds-m-right_xx-small"></lightning-button-icon>
-                    <lightning-button-icon icon-name="utility:undo" variant="bare"
-                        alternative-text="Restore Dismissed Priority Alerts"
-                        title="Restore Dismissed Priority Alerts" data-alert-type="High Priority Alert"
-                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
-                    <lightning-button-icon icon-name="utility:clear" variant="bare"
-                        alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
-                        data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
-                    </div>
-                </div>
-                <template if:true={hasJobAlerts}>
-                    <ul class="slds-notification-list">
-                        <template for:each={jobAlerts} for:item="alert">
-                            <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
-                                <div class="slds-notification slds-theme_warning slds-p-around_small slds-box slds-box_x-small">
-                                    <div class="slds-notification__body slds-w-full">
-                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                            <a href="javascript:void(0);" data-id={alert.saId} onclick={handleNavigate}
-                                                class="slds-text-heading_small slds-text-link">
-                                                {alert.saNumber}
-                                            </a>
-                                            <lightning-button-icon icon-name="utility:filterList" variant="bare"
-                                                size="small" alternative-text="Filter Gantt"
-                                                title="Show only this SA on Gantt" data-id={alert.saId}
-                                                onclick={handleFilterGantt}
-                                                class="slds-m-left_small slds-m-right_xxx-small">
-                                            </lightning-button-icon>
-                                            <lightning-button-icon icon-name="utility:copy" variant="bare" size="small"
-                                                alternative-text="Copy SA Number" title="Copy to Clipboard"
-                                                data-sa={alert.saNumber} onclick={handleCopy}
-                                                class="slds-m-left_xx-small slds-m-right_x-small"></lightning-button-icon>
-                                            <span class="slds-text-body_small slds-text-color_default">
-                                                | <strong>Priority:</strong> {alert.priority}
-                                            </span>
-                                        </div>
-                                        <div class="slds-text-body_small slds-text-color_default">
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>EarlyStart: </strong>
-                                                <lightning-formatted-date-time value={alert.earlyStart} year="numeric"
-                                                    month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                </lightning-formatted-date-time>
-                                            </p>
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>DueDate: </strong>
-                                                <lightning-formatted-date-time value={alert.dueDate} year="numeric"
-                                                    month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                </lightning-formatted-date-time>
-                                            </p>
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>Territory: </strong>{alert.territoryName}
-                                            </p>
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>Created: </strong>
-                                                <lightning-formatted-date-time value={alert.createdDate} year="numeric"
-                                                    month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                </lightning-formatted-date-time>
-                                            </p>
-                                            <p>
-                                                <strong>Address: </strong>{alert.address}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
-                                        <lightning-button-icon icon-name="utility:check" variant="border-filled"
-                                            alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
-                                            onclick={handleAcknowledge}></lightning-button-icon>
-                                        <lightning-button-icon icon-name="utility:close" variant="border-filled"
-                                            alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
-                                            onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
-                                    </div>
+                    <lightning-tab if:true={priorityAlertsEnabled} label={priorityTabLabel} value="jobs">
+                            <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                                <label class="today-only-control" title={todayOnlyHelpText}>
+                                    <input type="checkbox" class="today-only-checkbox" checked={showPriorityTodayOnly}
+                                        data-alert-type="High Priority Alert" onchange={handleTodayOnlyChange}
+                                        aria-label="Today only" />
+                                    <span class="today-only-label">Today only</span>
+                                </label>
+                                <div class="slds-grid">
+                                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                                        data-alert-type="High Priority Alert" onclick={handleRefresh}
+                                        class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                        alternative-text="Restore Dismissed Priority Alerts"
+                                        title="Restore Dismissed Priority Alerts" data-alert-type="High Priority Alert"
+                                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                        alternative-text="Dismiss All Priority Alerts" title="Dismiss All Priority Alerts (Personal)"
+                                        data-alert-type="High Priority Alert" onclick={handleDismissAll}></lightning-button-icon>
                                 </div>
-                            </li>
-                        </template>
-                    </ul>
-                </template>
-                <template if:false={hasJobAlerts}>
-                    <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                        {priorityEmptyMessage}
-                    </div>
-                </template>
-                    </lightning-tab>
-                </lightning-tabset>
-            </template>
-
-            <template if:true={showPanicOnly}>
-                <lightning-tabset active-tab-value="panic">
-                    <lightning-tab label={panicTabLabel} value="panic">
-                <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
-                    <label class="today-only-control" title={todayOnlyHelpText}>
-                        <input type="checkbox" class="today-only-checkbox" checked={showPanicTodayOnly}
-                            data-alert-type="Panic Alert" onchange={handleTodayOnlyChange}
-                            aria-label="Today only" />
-                        <span class="today-only-label">Today only</span>
-                    </label>
-                    <div class="slds-grid">
-                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
-                        alternative-text="Sync Territories" title="Sync Territory Filters"
-                        data-alert-type="Panic Alert" onclick={handleRefresh}
-                        class="slds-m-right_xx-small"></lightning-button-icon>
-                    <lightning-button-icon icon-name="utility:undo" variant="bare"
-                        alternative-text="Restore Dismissed Panic Alerts"
-                        title="Restore Dismissed Panic Alerts" data-alert-type="Panic Alert"
-                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
-                    <lightning-button-icon icon-name="utility:clear" variant="bare"
-                        alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
-                        data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
-                    </div>
-                </div>
-                <template if:true={hasPanicAlerts}>
-                    <ul class="slds-notification-list">
-                        <template for:each={panicAlerts} for:item="alert">
-                            <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
-                                <div class="slds-notification slds-theme_error slds-p-around_small slds-box slds-box_x-small">
-                                    <div class="slds-notification__body slds-w-full">
-                                        <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
-                                            <a href="javascript:void(0);" data-id={alert.resourceId} onclick={handleNavigate}
-                                                class="slds-text-heading_small slds-text-link">
-                                                {alert.resourceName}
-                                            </a>
-                                        </div>
-                                        <div class="slds-text-body_small slds-text-color_default">
-                                            <template if:true={alert.hasPhone}>
-                                                <p class="slds-m-bottom_xxx-small">
-                                                    <strong>Phone/Mobile: </strong>{alert.phone}
-                                                </p>
-                                            </template>
-                                            <template if:true={alert.hasEmployeeNumber}>
-                                                <p class="slds-m-bottom_xxx-small">
-                                                    <strong>Employee Number: </strong>{alert.employeeNumber}
-                                                </p>
-                                            </template>
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>Territory: </strong>{alert.territoryName}
-                                            </p>
-                                            <p class="slds-m-bottom_xxx-small">
-                                                <strong>Created: </strong>
-                                                <lightning-formatted-date-time value={alert.createdDate} year="numeric"
-                                                    month="short" day="2-digit" hour="2-digit" minute="2-digit">
-                                                </lightning-formatted-date-time>
-                                            </p>
-                                            <template if:true={alert.hasNature}>
-                                                <p class="slds-m-bottom_xxx-small">
-                                                    <strong>Nature of the emergency: </strong>{alert.natureOfEmergency}
-                                                </p>
-                                            </template>
-                                            <template if:true={alert.hasLocation}>
-                                                <p class="slds-m-bottom_xxx-small slds-grid slds-grid_vertical-align-center">
-                                                    <strong>Reported Location:&nbsp;</strong>
-                                                    <a href={alert.mapUrl} target="_blank" rel="noopener noreferrer" class="location-map-link" title="Open in Google Maps">
-                                                        <lightning-icon icon-name="utility:checkin" size="x-small" alternative-text="Open in Google Maps"></lightning-icon>
-                                                    </a>
-                                                </p>
-                                            </template>
-                                        </div>
-                                    </div>
-                                    <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
-                                        <lightning-button-icon icon-name="utility:check" variant="border-filled"
-                                            alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
-                                            onclick={handleAcknowledge}></lightning-button-icon>
-                                        <lightning-button-icon icon-name="utility:close" variant="border-filled"
-                                            alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
-                                            onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
-                                    </div>
+                            </div>
+                            <template if:true={hasJobAlerts}>
+                                <ul class="slds-notification-list">
+                                    <template for:each={jobAlerts} for:item="alert">
+                                        <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
+                                            <div class="slds-notification slds-theme_warning slds-p-around_small slds-box slds-box_x-small">
+                                                <div class="slds-notification__body slds-w-full">
+                                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                        <a href="javascript:void(0);" data-id={alert.saId} onclick={handleNavigate}
+                                                            class="slds-text-heading_small slds-text-link">
+                                                            {alert.saNumber}
+                                                        </a>
+                                                        <lightning-button-icon icon-name="utility:filterList" variant="bare"
+                                                            size="small" alternative-text="Filter Gantt"
+                                                            title="Show only this SA on Gantt" data-id={alert.saId}
+                                                            onclick={handleFilterGantt}
+                                                            class="slds-m-left_small slds-m-right_xxx-small">
+                                                        </lightning-button-icon>
+                                                        <lightning-button-icon icon-name="utility:copy" variant="bare" size="small"
+                                                            alternative-text="Copy SA Number" title="Copy to Clipboard"
+                                                            data-sa={alert.saNumber} onclick={handleCopy}
+                                                            class="slds-m-left_xx-small slds-m-right_x-small"></lightning-button-icon>
+                                                        <span class="slds-text-body_small slds-text-color_default">
+                                                            | <strong>Priority:</strong> {alert.priority}
+                                                        </span>
+                                                    </div>
+                                                    <div class="slds-text-body_small slds-text-color_default">
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>EarlyStart: </strong>
+                                                            <lightning-formatted-date-time value={alert.earlyStart} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>DueDate: </strong>
+                                                            <lightning-formatted-date-time value={alert.dueDate} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Territory: </strong>{alert.territoryName}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Created: </strong>
+                                                            <lightning-formatted-date-time value={alert.createdDate} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <p>
+                                                            <strong>Address: </strong>{alert.address}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
+                                                    <lightning-button-icon icon-name="utility:check" variant="border-filled"
+                                                        alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
+                                                        onclick={handleAcknowledge}></lightning-button-icon>
+                                                    <lightning-button-icon icon-name="utility:close" variant="border-filled"
+                                                        alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
+                                                        onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={hasJobAlerts}>
+                                <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
+                                    {priorityEmptyMessage}
                                 </div>
-                            </li>
-                        </template>
-                    </ul>
-                </template>
-                <template if:false={hasPanicAlerts}>
-                    <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
-                        {panicEmptyMessage}
-                    </div>
-                </template>
-                    </lightning-tab>
+                            </template>
+                        </lightning-tab>
+
+                    <lightning-tab if:true={cancellationAlertsEnabled} label={cancellationTabLabel} value="cancellation">
+                            <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                                <label class="today-only-control" title={todayOnlyHelpText}>
+                                    <input type="checkbox" class="today-only-checkbox" checked={showCancellationTodayOnly}
+                                        data-alert-type="Cancellation Alert" onchange={handleTodayOnlyChange}
+                                        aria-label="Today only" />
+                                    <span class="today-only-label">Today only</span>
+                                </label>
+                                <div class="slds-grid">
+                                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                                        data-alert-type="Cancellation Alert" onclick={handleRefresh}
+                                        class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                        alternative-text="Restore Dismissed Cancellation Alerts"
+                                        title="Restore Dismissed Cancellation Alerts" data-alert-type="Cancellation Alert"
+                                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                        alternative-text="Dismiss All Cancellation Alerts"
+                                        title="Dismiss All Cancellation Alerts (Personal)"
+                                        data-alert-type="Cancellation Alert" onclick={handleDismissAll}></lightning-button-icon>
+                                </div>
+                            </div>
+                            <template if:true={hasCancellationAlerts}>
+                                <ul class="slds-notification-list">
+                                    <template for:each={cancellationAlerts} for:item="alert">
+                                        <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
+                                            <div class="slds-notification slds-theme_error slds-p-around_small slds-box slds-box_x-small">
+                                                <div class="slds-notification__body slds-w-full">
+                                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                        <a href="javascript:void(0);" data-id={alert.saId} onclick={handleNavigate}
+                                                            class="slds-text-heading_small slds-text-link">
+                                                            {alert.saNumber}
+                                                        </a>
+                                                        <lightning-button-icon icon-name="utility:filterList" variant="bare"
+                                                            size="small" alternative-text="Filter Gantt"
+                                                            title="Show only this SA on Gantt" data-id={alert.saId}
+                                                            onclick={handleFilterGantt}
+                                                            class="slds-m-left_small slds-m-right_xxx-small">
+                                                        </lightning-button-icon>
+                                                        <lightning-button-icon icon-name="utility:copy" variant="bare" size="small"
+                                                            alternative-text="Copy SA Number" title="Copy to Clipboard"
+                                                            data-sa={alert.saNumber} onclick={handleCopy}
+                                                            class="slds-m-left_xx-small slds-m-right_x-small"></lightning-button-icon>
+                                                    </div>
+                                                    <div class="slds-text-body_small slds-text-color_default">
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Status: </strong>{alert.saStatus}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Territory: </strong>{alert.territoryName}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Created: </strong>
+                                                            <lightning-formatted-date-time value={alert.createdDate} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <p>
+                                                            <strong>Address: </strong>{alert.address}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
+                                                    <lightning-button-icon icon-name="utility:check" variant="border-filled"
+                                                        alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
+                                                        onclick={handleAcknowledge}></lightning-button-icon>
+                                                    <lightning-button-icon icon-name="utility:close" variant="border-filled"
+                                                        alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
+                                                        onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={hasCancellationAlerts}>
+                                <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
+                                    {cancellationEmptyMessage}
+                                </div>
+                            </template>
+                        </lightning-tab>
+
+                    <lightning-tab if:true={jeopardyAlertsEnabled} label={jeopardyTabLabel} value="jeopardy">
+                            <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                                <label class="today-only-control" title={todayOnlyHelpText}>
+                                    <input type="checkbox" class="today-only-checkbox" checked={showJeopardyTodayOnly}
+                                        data-alert-type="In Jeopardy Alert" onchange={handleTodayOnlyChange}
+                                        aria-label="Today only" />
+                                    <span class="today-only-label">Today only</span>
+                                </label>
+                                <div class="slds-grid">
+                                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                                        data-alert-type="In Jeopardy Alert" onclick={handleRefresh}
+                                        class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                        alternative-text="Restore Dismissed In Jeopardy Alerts"
+                                        title="Restore Dismissed In Jeopardy Alerts" data-alert-type="In Jeopardy Alert"
+                                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                        alternative-text="Dismiss All In Jeopardy Alerts"
+                                        title="Dismiss All In Jeopardy Alerts (Personal)"
+                                        data-alert-type="In Jeopardy Alert" onclick={handleDismissAll}></lightning-button-icon>
+                                </div>
+                            </div>
+                            <template if:true={hasJeopardyAlerts}>
+                                <ul class="slds-notification-list">
+                                    <template for:each={jeopardyAlerts} for:item="alert">
+                                        <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
+                                            <div class="slds-notification slds-theme_warning slds-p-around_small slds-box slds-box_x-small">
+                                                <div class="slds-notification__body slds-w-full">
+                                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                        <a href="javascript:void(0);" data-id={alert.saId} onclick={handleNavigate}
+                                                            class="slds-text-heading_small slds-text-link">
+                                                            {alert.saNumber}
+                                                        </a>
+                                                        <lightning-button-icon icon-name="utility:filterList" variant="bare"
+                                                            size="small" alternative-text="Filter Gantt"
+                                                            title="Show only this SA on Gantt" data-id={alert.saId}
+                                                            onclick={handleFilterGantt}
+                                                            class="slds-m-left_small slds-m-right_xxx-small">
+                                                        </lightning-button-icon>
+                                                        <lightning-button-icon icon-name="utility:copy" variant="bare" size="small"
+                                                            alternative-text="Copy SA Number" title="Copy to Clipboard"
+                                                            data-sa={alert.saNumber} onclick={handleCopy}
+                                                            class="slds-m-left_xx-small slds-m-right_x-small"></lightning-button-icon>
+                                                    </div>
+                                                    <div class="slds-text-body_small slds-text-color_default">
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>In Jeopardy: </strong>{alert.inJeopardyLabel}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Territory: </strong>{alert.territoryName}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Created: </strong>
+                                                            <lightning-formatted-date-time value={alert.createdDate} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <p>
+                                                            <strong>Address: </strong>{alert.address}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
+                                                    <lightning-button-icon icon-name="utility:check" variant="border-filled"
+                                                        alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
+                                                        onclick={handleAcknowledge}></lightning-button-icon>
+                                                    <lightning-button-icon icon-name="utility:close" variant="border-filled"
+                                                        alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
+                                                        onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={hasJeopardyAlerts}>
+                                <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
+                                    {jeopardyEmptyMessage}
+                                </div>
+                            </template>
+                        </lightning-tab>
+
+                    <lightning-tab if:true={panicAlertsEnabled} label={panicTabLabel} value="panic">
+                            <div class="tab-action-bar slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-p-horizontal_x-small slds-p-top_x-small">
+                                <label class="today-only-control" title={todayOnlyHelpText}>
+                                    <input type="checkbox" class="today-only-checkbox" checked={showPanicTodayOnly}
+                                        data-alert-type="Panic Alert" onchange={handleTodayOnlyChange}
+                                        aria-label="Today only" />
+                                    <span class="today-only-label">Today only</span>
+                                </label>
+                                <div class="slds-grid">
+                                    <lightning-button-icon icon-name="utility:refresh" variant="bare"
+                                        alternative-text="Sync Territories" title="Sync Territory Filters"
+                                        data-alert-type="Panic Alert" onclick={handleRefresh}
+                                        class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:undo" variant="bare"
+                                        alternative-text="Restore Dismissed Panic Alerts"
+                                        title="Restore Dismissed Panic Alerts" data-alert-type="Panic Alert"
+                                        onclick={handleUndoDismissAll} class="slds-m-right_xx-small"></lightning-button-icon>
+                                    <lightning-button-icon icon-name="utility:clear" variant="bare"
+                                        alternative-text="Dismiss All Panic Alerts" title="Dismiss All Panic Alerts (Personal)"
+                                        data-alert-type="Panic Alert" onclick={handleDismissAll}></lightning-button-icon>
+                                </div>
+                            </div>
+                            <template if:true={hasPanicAlerts}>
+                                <ul class="slds-notification-list">
+                                    <template for:each={panicAlerts} for:item="alert">
+                                        <li class="slds-notification-list__item slds-p-around_x-small" key={alert.Id}>
+                                            <div class="slds-notification slds-theme_error slds-p-around_small slds-box slds-box_x-small">
+                                                <div class="slds-notification__body slds-w-full">
+                                                    <div class="slds-grid slds-grid_vertical-align-center slds-m-bottom_xx-small">
+                                                        <a href="javascript:void(0);" data-id={alert.resourceId} onclick={handleNavigate}
+                                                            class="slds-text-heading_small slds-text-link">
+                                                            {alert.resourceName}
+                                                        </a>
+                                                    </div>
+                                                    <div class="slds-text-body_small slds-text-color_default">
+                                                        <template if:true={alert.hasPhone}>
+                                                            <p class="slds-m-bottom_xxx-small">
+                                                                <strong>Phone/Mobile: </strong>{alert.phone}
+                                                            </p>
+                                                        </template>
+                                                        <template if:true={alert.hasEmployeeNumber}>
+                                                            <p class="slds-m-bottom_xxx-small">
+                                                                <strong>Employee Number: </strong>{alert.employeeNumber}
+                                                            </p>
+                                                        </template>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Territory: </strong>{alert.territoryName}
+                                                        </p>
+                                                        <p class="slds-m-bottom_xxx-small">
+                                                            <strong>Created: </strong>
+                                                            <lightning-formatted-date-time value={alert.createdDate} year="numeric"
+                                                                month="short" day="2-digit" hour="2-digit" minute="2-digit">
+                                                            </lightning-formatted-date-time>
+                                                        </p>
+                                                        <template if:true={alert.hasNature}>
+                                                            <p class="slds-m-bottom_xxx-small">
+                                                                <strong>Nature of the emergency: </strong>{alert.natureOfEmergency}
+                                                            </p>
+                                                        </template>
+                                                        <template if:true={alert.hasLocation}>
+                                                            <p class="slds-m-bottom_xxx-small slds-grid slds-grid_vertical-align-center">
+                                                                <strong>Reported Location:&nbsp;</strong>
+                                                                <a href={alert.mapUrl} target="_blank" rel="noopener noreferrer" class="location-map-link" title="Open in Google Maps">
+                                                                    <lightning-icon icon-name="utility:checkin" size="x-small" alternative-text="Open in Google Maps"></lightning-icon>
+                                                                </a>
+                                                            </p>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                                <div class="slds-notification__actions slds-m-top_x-small slds-grid slds-grid_align-end">
+                                                    <lightning-button-icon icon-name="utility:check" variant="border-filled"
+                                                        alternative-text="Acknowledge" title="Acknowledge (Global)" data-id={alert.Id}
+                                                        onclick={handleAcknowledge}></lightning-button-icon>
+                                                    <lightning-button-icon icon-name="utility:close" variant="border-filled"
+                                                        alternative-text="Dismiss" title="Dismiss (Personal)" data-id={alert.Id}
+                                                        onclick={handleDismiss} class="slds-m-left_xx-small"></lightning-button-icon>
+                                                </div>
+                                            </div>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </template>
+                            <template if:false={hasPanicAlerts}>
+                                <div class="slds-p-around_medium slds-text-align_center slds-text-color_weak">
+                                    {panicEmptyMessage}
+                                </div>
+                            </template>
+                        </lightning-tab>
                 </lightning-tabset>
             </template>
         </div>

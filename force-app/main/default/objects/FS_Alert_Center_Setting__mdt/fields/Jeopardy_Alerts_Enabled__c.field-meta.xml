@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Jeopardy_Alerts_Enabled__c</fullName>
+    <defaultValue>false</defaultValue>
+    <description>Enable alert generation when a Field Services Service Appointment is marked In Jeopardy.</description>
+    <fieldManageability>DeveloperControlled</fieldManageability>
+    <label>Jeopardy Alerts Enabled</label>
+    <securityClassification>Confidential</securityClassification>
+    <type>Checkbox</type>
+</CustomField>

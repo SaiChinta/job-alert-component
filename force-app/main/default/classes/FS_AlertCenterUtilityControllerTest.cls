@@ -2,7 +2,9 @@
  * @description Test class for FS_AlertCenterUtilityController and FS_ServiceAppointmentTrigger.
  * Validates active alert queries, CMDT settings, global acknowledgement, personal dismissal
  * (including after acknowledge), type-scoped undo, Gantt filter event publication,
- * Service Appointment Field Services record type gating, and automatic alert creation.
+ * Service Appointment Field Services record type gating, parent-lookup populate-if-blank,
+ * High Priority / Cancellation / In Jeopardy alert creation, uniqueness per SA plus type,
+ * and Cancellation Alerts only when the running user has the Field Service Mobile PSL.
  */
 @IsTest
 private class FS_AlertCenterUtilityControllerTest {
@@ -98,17 +100,58 @@ private class FS_AlertCenterUtilityControllerTest {
 
     /**
      * @description Applies in-memory Default_Setting values so tests do not depend on org CMDT toggles.
+     * Cancellation and In Jeopardy flags default to false.
      * @param priorityEnabled Whether Priority Alerts should be treated as enabled.
      * @param panicEnabled Whether Panic Alerts should be treated as enabled.
      */
     private static void applyAlertCenterSettingsOverride(Boolean priorityEnabled, Boolean panicEnabled) {
+        applyAlertCenterSettingsOverride(priorityEnabled, panicEnabled, false, false);
+    }
+
+    /**
+     * @description Applies in-memory Default_Setting values so tests do not depend on org CMDT toggles.
+     * @param priorityEnabled Whether Priority Alerts should be treated as enabled.
+     * @param panicEnabled Whether Panic Alerts should be treated as enabled.
+     * @param cancellationEnabled Whether Cancellation Alerts should be treated as enabled.
+     * @param jeopardyEnabled Whether Jeopardy Alerts should be treated as enabled.
+     */
+    private static void applyAlertCenterSettingsOverride(
+        Boolean priorityEnabled,
+        Boolean panicEnabled,
+        Boolean cancellationEnabled,
+        Boolean jeopardyEnabled
+    ) {
         FS_Alert_Center_Setting__mdt setting = new FS_Alert_Center_Setting__mdt(
             Priority_Alerts_Enabled__c = priorityEnabled,
             Panic_Alerts_Enabled__c = panicEnabled,
+            Cancellation_Alerts_Enabled__c = cancellationEnabled,
+            Jeopardy_Alerts_Enabled__c = jeopardyEnabled,
             Alert_Priorities__c = 'High,Critical,Jeopardy'
         );
         FS_AlertCenterUtilityController.settingsOverride = setting;
         FS_ServiceAppointmentTriggerHandler.settingsOverride = setting;
+    }
+
+    /**
+     * @description Sets whether cancellation tests treat the running user as a Field Service Mobile licensed resource.
+     * @param hasLicense True to simulate a field resource; false to simulate a user without that PSL.
+     */
+    private static void applyFieldServiceMobileLicenseOverride(Boolean hasLicense) {
+        FS_ServiceAppointmentTriggerHandler.fieldServiceMobileLicenseOverride = hasLicense;
+    }
+
+    /**
+     * @description Returns the first active Nature of the Emergency picklist value, or null if none are active.
+     * @return An active picklist API value, or null.
+     */
+    private static String getActiveNatureValue() {
+        List<Schema.PicklistEntry> entries = FS_AlertCenter__c.Nature_of_the_Emergency__c.getDescribe().getPicklistValues();
+        for (Schema.PicklistEntry entry : entries) {
+            if (entry.isActive()) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     /**
@@ -125,6 +168,8 @@ private class FS_AlertCenterUtilityControllerTest {
 
         System.assertEquals(true, settings.priorityAlertsEnabled, 'Priority alerts should follow the test override.');
         System.assertEquals(true, settings.panicAlertsEnabled, 'Panic alerts should follow the test override.');
+        System.assertEquals(false, settings.cancellationAlertsEnabled, 'Cancellation alerts should default off in the two-flag override.');
+        System.assertEquals(false, settings.jeopardyAlertsEnabled, 'Jeopardy alerts should default off in the two-flag override.');
     }
 
     /**
@@ -209,15 +254,19 @@ private class FS_AlertCenterUtilityControllerTest {
             );
             insert sr;
 
-            insert new FS_AlertCenter__c(
+            FS_AlertCenter__c panicAlert = new FS_AlertCenter__c(
                 Alert_Type__c = 'Panic Alert',
                 Panic_Service_Resource__c = sr.Id,
                 Service_Territory__c = childTerritory.Id,
                 Status__c = 'New',
-                Nature_of_the_Emergency__c = 'Medical crisis',
                 Last_Known_Latitude__c = -36.848461,
                 Last_Known_Longitude__c = 174.763336
             );
+            String natureValue = getActiveNatureValue();
+            if (natureValue != null) {
+                panicAlert.Nature_of_the_Emergency__c = natureValue;
+            }
+            insert panicAlert;
         }
 
         Test.startTest();
@@ -231,7 +280,8 @@ private class FS_AlertCenterUtilityControllerTest {
                 System.assertEquals(sr.Id, alert.Panic_Service_Resource__c, 'Panic alert should reference the service resource.');
                 System.assertEquals(-36.848461, alert.Last_Known_Latitude__c, 'Latitude should be returned for panic alerts.');
                 System.assertEquals(174.763336, alert.Last_Known_Longitude__c, 'Longitude should be returned for panic alerts.');
-                System.assertEquals('Medical crisis', alert.Nature_of_the_Emergency__c, 'Nature of the emergency should be returned.');
+                String expectedNature = getActiveNatureValue();
+                System.assertEquals(expectedNature, alert.Nature_of_the_Emergency__c, 'Nature of the emergency should match an active picklist value.');
                 System.assertEquals('0210000000', alert.Panic_Service_Resource__r.RelatedRecord.Phone, 'Resource phone should be returned.');
                 System.assertEquals('EMP001', alert.Panic_Service_Resource__r.RelatedRecord.EmployeeNumber, 'Resource employee number should be returned.');
             }
@@ -518,7 +568,8 @@ private class FS_AlertCenterUtilityControllerTest {
 
         WorkOrderLineItem woliHigh = new WorkOrderLineItem(
             WorkOrderId = woHigh.Id,
-            Description = 'High Priority WOLI'
+            Description = 'High Priority WOLI',
+            Priority = 'High'
         );
         insert woliHigh;
 
@@ -646,5 +697,222 @@ private class FS_AlertCenterUtilityControllerTest {
             WHERE Alert_Type__c = 'High Priority Alert'
         ];
         System.assertEquals(alertCountBefore, alertCountAfter, 'A non-Field Services record type should not create a High Priority Alert.');
+    }
+
+    /**
+     * @description Tests that blank parent lookups are populated from ParentRecordId.
+     */
+    @IsTest
+    static void testPopulateParentFieldsFillsBlankLookups() {
+        WorkOrderLineItem woli = [SELECT Id, WorkOrderId FROM WorkOrderLineItem LIMIT 1];
+        ServiceAppointment sa = new ServiceAppointment(
+            ParentRecordId = woli.Id,
+            RecordTypeId = getFieldServicesRecordTypeId()
+        );
+
+        Test.startTest();
+        FS_ServiceAppointmentTriggerHandler.handleTrigger(
+            new List<ServiceAppointment>{ sa },
+            null,
+            System.TriggerOperation.BEFORE_INSERT
+        );
+        Test.stopTest();
+
+        System.assertEquals(woli.Id, sa.FS_Work_Order_Line_Item__c, 'Blank WOLI lookup should be populated from ParentRecordId.');
+        System.assertEquals(woli.WorkOrderId, sa.FS_Work_Order__c, 'Blank Work Order lookup should be populated from the WOLI.');
+    }
+
+    /**
+     * @description Tests that already populated parent lookups are not overwritten.
+     */
+    @IsTest
+    static void testPopulateParentFieldsLeavesExistingLookups() {
+        WorkOrderLineItem woli = [SELECT Id, WorkOrderId FROM WorkOrderLineItem LIMIT 1];
+        ServiceAppointment sa = new ServiceAppointment(
+            ParentRecordId = woli.Id,
+            RecordTypeId = getFieldServicesRecordTypeId(),
+            FS_Work_Order_Line_Item__c = woli.Id,
+            FS_Work_Order__c = woli.WorkOrderId
+        );
+
+        Test.startTest();
+        FS_ServiceAppointmentTriggerHandler.handleTrigger(
+            new List<ServiceAppointment>{ sa },
+            null,
+            System.TriggerOperation.BEFORE_INSERT
+        );
+        Test.stopTest();
+
+        System.assertEquals(woli.Id, sa.FS_Work_Order_Line_Item__c, 'Existing WOLI lookup should be left unchanged.');
+        System.assertEquals(woli.WorkOrderId, sa.FS_Work_Order__c, 'Existing Work Order lookup should be left unchanged.');
+    }
+
+    /**
+     * @description Tests that a Cancellation Alert is created when Status becomes Canceled
+     * by a user with the Field Service Mobile permission set license.
+     */
+    @IsTest
+    static void testCancellationAlertWhenStatusCanceled() {
+        applyAlertCenterSettingsOverride(false, false, true, false);
+        applyFieldServiceMobileLicenseOverride(true);
+        ServiceAppointment sa = [SELECT Id, Status FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.Status = 'Canceled';
+        update sa;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'Cancellation Alert'
+        ];
+        System.assertEquals(1, alerts.size(), 'A Cancellation Alert should be created when Status becomes Canceled.');
+    }
+
+    /**
+     * @description Tests that Cancellation Alerts are not created when the CMDT flag is off.
+     */
+    @IsTest
+    static void testCancellationAlertSkippedWhenDisabled() {
+        applyAlertCenterSettingsOverride(false, false, false, false);
+        ServiceAppointment sa = [SELECT Id, Status FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.Status = 'Canceled';
+        update sa;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'Cancellation Alert'
+        ];
+        System.assertEquals(0, alerts.size(), 'No Cancellation Alert should be created when the flag is off.');
+    }
+
+    /**
+     * @description Tests that Cancellation Alerts are not created when the running user
+     * does not have the Field Service Mobile permission set license.
+     */
+    @IsTest
+    static void testCancellationAlertSkippedWithoutMobileLicense() {
+        applyAlertCenterSettingsOverride(false, false, true, false);
+        applyFieldServiceMobileLicenseOverride(false);
+        ServiceAppointment sa = [SELECT Id, Status FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.Status = 'Canceled';
+        update sa;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'Cancellation Alert'
+        ];
+        System.assertEquals(
+            0,
+            alerts.size(),
+            'No Cancellation Alert should be created when the running user lacks the Field Service Mobile PSL.'
+        );
+    }
+
+    /**
+     * @description Tests that an In Jeopardy Alert is created when FSL__InJeopardy__c becomes true.
+     */
+    @IsTest
+    static void testJeopardyAlertWhenMarked() {
+        applyAlertCenterSettingsOverride(false, false, false, true);
+        ServiceAppointment sa = [SELECT Id, FSL__InJeopardy__c FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.FSL__InJeopardy__c = true;
+        update sa;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'In Jeopardy Alert'
+        ];
+        System.assertEquals(1, alerts.size(), 'An In Jeopardy Alert should be created when the appointment is marked In Jeopardy.');
+    }
+
+    /**
+     * @description Tests that In Jeopardy Alerts are not created when the CMDT flag is off.
+     */
+    @IsTest
+    static void testJeopardyAlertSkippedWhenDisabled() {
+        applyAlertCenterSettingsOverride(false, false, false, false);
+        ServiceAppointment sa = [SELECT Id, FSL__InJeopardy__c FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.FSL__InJeopardy__c = true;
+        update sa;
+        Test.stopTest();
+
+        List<FS_AlertCenter__c> alerts = [
+            SELECT Id
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'In Jeopardy Alert'
+        ];
+        System.assertEquals(0, alerts.size(), 'No In Jeopardy Alert should be created when the flag is off.');
+    }
+
+    /**
+     * @description Tests that a High Priority Alert and a Cancellation Alert can exist for the same appointment.
+     */
+    @IsTest
+    static void testPriorityAndCancellationAlertsCanCoexist() {
+        applyAlertCenterSettingsOverride(false, false, true, false);
+        applyFieldServiceMobileLicenseOverride(true);
+        ServiceAppointment sa = [SELECT Id, Status FROM ServiceAppointment LIMIT 1];
+
+        Test.startTest();
+        sa.Status = 'Canceled';
+        update sa;
+        Test.stopTest();
+
+        Set<String> types = new Set<String>();
+        for (FS_AlertCenter__c alert : [
+            SELECT Alert_Type__c
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+        ]) {
+            types.add(alert.Alert_Type__c);
+        }
+        System.assertEquals(true, types.contains('High Priority Alert'), 'The setup High Priority Alert should remain.');
+        System.assertEquals(true, types.contains('Cancellation Alert'), 'A Cancellation Alert should be added for the same appointment.');
+    }
+
+    /**
+     * @description Tests that a second cancel update does not insert another Cancellation Alert.
+     */
+    @IsTest
+    static void testCancellationAlertNotDuplicated() {
+        applyAlertCenterSettingsOverride(false, false, true, false);
+        applyFieldServiceMobileLicenseOverride(true);
+        ServiceAppointment sa = [SELECT Id, Status FROM ServiceAppointment LIMIT 1];
+        sa.Status = 'Canceled';
+        update sa;
+
+        Test.startTest();
+        sa.DueDate = DateTime.now().addDays(8);
+        update sa;
+        Test.stopTest();
+
+        Integer cancelCount = [
+            SELECT COUNT()
+            FROM FS_AlertCenter__c
+            WHERE Service_Appointment__c = :sa.Id
+            AND Alert_Type__c = 'Cancellation Alert'
+        ];
+        System.assertEquals(1, cancelCount, 'A later update of an already canceled appointment should not create another Cancellation Alert.');
     }
 }

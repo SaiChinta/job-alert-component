@@ -26,6 +26,18 @@ public inherited sharing class FS_AlertCenterUtilityController {
          */
         @AuraEnabled
         public Boolean panicAlertsEnabled { get; set; }
+
+        /**
+         * @description True when cancellation alerts should be shown.
+         */
+        @AuraEnabled
+        public Boolean cancellationAlertsEnabled { get; set; }
+
+        /**
+         * @description True when in-jeopardy alerts should be shown.
+         */
+        @AuraEnabled
+        public Boolean jeopardyAlertsEnabled { get; set; }
     }
 
     /**
@@ -48,18 +60,22 @@ public inherited sharing class FS_AlertCenterUtilityController {
 
     /**
      * @description Returns CMDT flags that control which Alert Center tabs are visible.
-     * @return AlertCenterSettings with priority and panic enablement flags.
+     * @return AlertCenterSettings with type enablement flags.
      */
     @AuraEnabled(cacheable=true)
     public static AlertCenterSettings getAlertCenterSettings() {
         AlertCenterSettings result = new AlertCenterSettings();
         result.priorityAlertsEnabled = false;
         result.panicAlertsEnabled = false;
+        result.cancellationAlertsEnabled = false;
+        result.jeopardyAlertsEnabled = false;
 
         FS_Alert_Center_Setting__mdt config = getDefaultSetting();
         if (config != null) {
             result.priorityAlertsEnabled = config.Priority_Alerts_Enabled__c == true;
             result.panicAlertsEnabled = config.Panic_Alerts_Enabled__c == true;
+            result.cancellationAlertsEnabled = config.Cancellation_Alerts_Enabled__c == true;
+            result.jeopardyAlertsEnabled = config.Jeopardy_Alerts_Enabled__c == true;
         }
         return result;
     }
@@ -74,10 +90,11 @@ public inherited sharing class FS_AlertCenterUtilityController {
             return settingsOverride;
         }
         List<FS_Alert_Center_Setting__mdt> settings = [
-            SELECT Priority_Alerts_Enabled__c, Panic_Alerts_Enabled__c, Alert_Priorities__c
+            SELECT Priority_Alerts_Enabled__c, Panic_Alerts_Enabled__c, Cancellation_Alerts_Enabled__c,
+                   Jeopardy_Alerts_Enabled__c, Alert_Priorities__c
             FROM FS_Alert_Center_Setting__mdt
             WHERE DeveloperName = 'Default_Setting'
-            WITH SECURITY_ENFORCED
+            WITH SYSTEM_MODE
             LIMIT 1
         ];
         if (settings.isEmpty()) {
@@ -104,6 +121,8 @@ public inherited sharing class FS_AlertCenterUtilityController {
                    Service_Appointment__c,
                    Service_Appointment__r.AppointmentNumber,
                    Service_Appointment__r.Priority__c,
+                   Service_Appointment__r.Status,
+                   Service_Appointment__r.FSL__InJeopardy__c,
                    Service_Appointment__r.EarliestStartTime,
                    Service_Appointment__r.DueDate,
                    Service_Appointment__r.Street,
@@ -235,7 +254,7 @@ public inherited sharing class FS_AlertCenterUtilityController {
 
     /**
      * @description Restores today's personal dismissals for one alert type for the current user.
-     * @param alertType Alert type API value: High Priority Alert or Panic Alert.
+     * @param alertType Alert type API value.
      */
     @AuraEnabled
     public static void undoAllDismissals(String alertType) {
@@ -243,7 +262,7 @@ public inherited sharing class FS_AlertCenterUtilityController {
             if (String.isBlank(alertType)) {
                 return;
             }
-            if (alertType != 'High Priority Alert' && alertType != 'Panic Alert') {
+            if (!isSupportedAlertType(alertType)) {
                 return;
             }
 
@@ -263,5 +282,17 @@ public inherited sharing class FS_AlertCenterUtilityController {
         } catch (Exception e) {
             throw new AuraHandledException('Error restoring alerts: ' + e.getMessage());
         }
+    }
+
+    /**
+     * @description True when alertType is one of the packaged Alert Type API values.
+     * @param alertType Candidate alert type.
+     * @return True if the value is supported for type-scoped undo.
+     */
+    private static Boolean isSupportedAlertType(String alertType) {
+        return alertType == 'High Priority Alert'
+            || alertType == 'Panic Alert'
+            || alertType == 'Cancellation Alert'
+            || alertType == 'In Jeopardy Alert';
     }
 }

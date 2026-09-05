@@ -13,24 +13,33 @@
         <valueSetDefinition>
             <sorted>false</sorted>
             <value>
+                <fullName>Inspector needs Urgent Assistance</fullName>
+                <default>true</default>
+                <label>Inspector needs Urgent Assistance</label>
+            </value>
+            <value>
+                <fullName>Environmental accident</fullName>
+                <default>false</default>
+                <isActive>false</isActive>
+                <label>Environmental accident</label>
+            </value>
+            <value>
                 <fullName>Medical crisis</fullName>
                 <default>false</default>
+                <isActive>false</isActive>
                 <label>Medical crisis</label>
             </value>
             <value>
                 <fullName>Physical assault</fullName>
                 <default>false</default>
+                <isActive>false</isActive>
                 <label>Physical assault</label>
             </value>
             <value>
                 <fullName>Threat of violence</fullName>
                 <default>false</default>
+                <isActive>false</isActive>
                 <label>Threat of violence</label>
-            </value>
-            <value>
-                <fullName>Environmental accident</fullName>
-                <default>false</default>
-                <label>Environmental accident</label>
             </value>
         </valueSetDefinition>
     </valueSet>

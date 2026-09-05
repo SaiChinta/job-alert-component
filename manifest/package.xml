@@ -16,7 +16,9 @@
         <name>LightningComponentBundle</name>
     </types>
     <types>
-        <members>FS_AlertCenter_Component_Access</members>
+        <members>FS_Alert_Center_Appointment_Booking</members>
+        <members>FS_Alert_Center_Field_Resource</members>
+        <members>FS_Alert_Center_Dispatcher</members>
         <name>PermissionSet</name>
     </types>
     <types>
@@ -48,6 +50,8 @@
         <members>FS_Alert_Center_Setting__mdt.Alert_Priorities__c</members>
         <members>FS_Alert_Center_Setting__mdt.Priority_Alerts_Enabled__c</members>
         <members>FS_Alert_Center_Setting__mdt.Panic_Alerts_Enabled__c</members>
+        <members>FS_Alert_Center_Setting__mdt.Cancellation_Alerts_Enabled__c</members>
+        <members>FS_Alert_Center_Setting__mdt.Jeopardy_Alerts_Enabled__c</members>
         <name>CustomField</name>
     </types>
     <types>
@@ -70,6 +74,8 @@
         <members>FS_AlertCenter__c.FS_All_Alert_Centers</members>
         <members>FS_AlertCenter__c.FS_All_Panic_Alerts</members>
         <members>FS_AlertCenter__c.FS_All_High_Priority_Alerts</members>
+        <members>FS_AlertCenter__c.FS_All_Cancellation_Alerts</members>
+        <members>FS_AlertCenter__c.FS_All_In_Jeopardy_Alerts</members>
         <members>FS_Alert_Dismissal__c.All</members>
         <members>FS_Alert_Dismissal__c.FS_All_Alert_Dismissals</members>
         <name>ListView</name>

@@ -12,6 +12,14 @@
     </values>
     <values>
         <field>Priority_Alerts_Enabled__c</field>
-        <value xsi:type="xsd:boolean">true</value>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Cancellation_Alerts_Enabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
+    </values>
+    <values>
+        <field>Jeopardy_Alerts_Enabled__c</field>
+        <value xsi:type="xsd:boolean">false</value>
     </values>
 </CustomMetadata>

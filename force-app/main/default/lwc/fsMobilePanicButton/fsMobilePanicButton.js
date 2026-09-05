@@ -1,9 +1,12 @@
 import { LightningElement, track, wire } from 'lwc';
 import { gql, graphql } from 'lightning/uiGraphQLApi';
 import { createRecord } from 'lightning/uiRecordApi';
+import { getObjectInfo, getPicklistValues } from 'lightning/uiObjectInfoApi';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import { getLocationService } from 'lightning/mobileCapabilities';
 import userId from '@salesforce/user/Id';
+import ALERT_CENTER_OBJECT from '@salesforce/schema/FS_AlertCenter__c';
+import NATURE_FIELD from '@salesforce/schema/FS_AlertCenter__c.Nature_of_the_Emergency__c';
 
 const SERVICE_RESOURCE_QUERY = gql`
     query getCurrentUserServiceResource($userId: ID) {
@@ -46,6 +49,13 @@ const TERRITORY_MEMBER_QUERY = gql`
     }
 `;
 
+const FALLBACK_NATURE_OPTIONS = [
+    { label: 'Medical crisis', value: 'Medical crisis' },
+    { label: 'Physical assault', value: 'Physical assault' },
+    { label: 'Threat of violence', value: 'Threat of violence' },
+    { label: 'Environmental accident', value: 'Environmental accident' }
+];
+
 export default class FsMobilePanicButton extends LightningElement {
     currentUserId = userId;
     serviceResourceId;
@@ -58,6 +68,7 @@ export default class FsMobilePanicButton extends LightningElement {
     @track latitude = null;
     @track longitude = null;
     @track selectedNature = '';
+    @track schemaNatureOptions = [];
 
     connectedCallback() {
         try {
@@ -67,13 +78,22 @@ export default class FsMobilePanicButton extends LightningElement {
         }
     }
 
+    get natureRecordTypeId() {
+        if (
+            this.alertCenterObjectInfo &&
+            this.alertCenterObjectInfo.data &&
+            this.alertCenterObjectInfo.data.defaultRecordTypeId
+        ) {
+            return this.alertCenterObjectInfo.data.defaultRecordTypeId;
+        }
+        return undefined;
+    }
+
     get natureOptions() {
-        return [
-            { label: 'Medical crisis', value: 'Medical crisis' },
-            { label: 'Physical assault', value: 'Physical assault' },
-            { label: 'Threat of violence', value: 'Threat of violence' },
-            { label: 'Environmental accident', value: 'Environmental accident' }
-        ];
+        if (this.schemaNatureOptions && this.schemaNatureOptions.length > 0) {
+            return this.schemaNatureOptions;
+        }
+        return FALLBACK_NATURE_OPTIONS;
     }
 
     get resourceVariables() {
@@ -94,6 +114,24 @@ export default class FsMobilePanicButton extends LightningElement {
 
     get isNativeLocationAvailable() {
         return this.locationService && typeof this.locationService.isAvailable === 'function' && this.locationService.isAvailable();
+    }
+
+    @wire(getObjectInfo, { objectApiName: ALERT_CENTER_OBJECT })
+    alertCenterObjectInfo;
+
+    @wire(getPicklistValues, {
+        recordTypeId: '$natureRecordTypeId',
+        fieldApiName: NATURE_FIELD
+    })
+    wiredNaturePicklist({ data, error }) {
+        if (error || !data || !data.values || data.values.length === 0) {
+            this.schemaNatureOptions = [];
+            return;
+        }
+        this.schemaNatureOptions = data.values.map((item) => ({
+            label: item.label,
+            value: item.value
+        }));
     }
 
     @wire(graphql, {

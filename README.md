@@ -1,21 +1,22 @@
 # Alert Center Component for Salesforce Field Service
 
-A reusable Field Service package that alerts **dispatchers** of high-priority jobs and field-resource panic events in the Service Territories they currently have loaded on the Gantt.
+A reusable Field Service package that alerts **dispatchers** of high-priority jobs, cancellations, in-jeopardy appointments, and field-resource panic events in the Service Territories they currently have loaded on the Gantt.
 
-Dispatchers use the **FS Alert Center** utility bar LWC (`fsAlertCenterUtility`). Technicians raise panic events from the **FS Mobile Panic Button** global action (`fsMobilePanicButton`). Architecture, data model, per-tab action design, and sequence detail live in `docs/FS_Alert_Center_Design.md`.
+Dispatchers use the **FS Alert Center** utility bar LWC (`fsAlertCenterUtility`). Technicians raise panic events from the **FS Mobile Panic Button** global action (`fsMobilePanicButton`). Architecture, data model, per-tab action design, and sequence detail live in `docs/FS_Alert_Center_Design.md`. Manual steps to stand this up in a **new org** (permission sets, utility bar, publisher layout, CMDT, Offline Brief, and smoke tests) are in `README_IMPLEMENTATION.md`.
 
 ## Features
 
-- Configurable **Priority Alerts**, **Panic Alerts**, or **both** via Custom Metadata (no code change).
+- Configurable **Priority**, **Panic**, **Cancellation**, and **In Jeopardy** alerts via Custom Metadata (no code change). New cancellation and jeopardy flags default **off**.
 - High Priority Alerts created from the Service Appointment trigger when parent Work Order / Work Order Line Item priority matches a comma-separated list.
+- Cancellation Alerts when a Field Services appointment status becomes `Canceled` **and** the running user has the Field Service Mobile permission set license. In Jeopardy Alerts when `FSL__InJeopardy__c` becomes true.
 - Offline-capable Field Service Mobile SOS that creates a Panic Alert with GPS, Service Resource, optional Nature of the Emergency, and primary territory.
 - Utility list filtered by the dispatcher’s **Gantt-loaded Service Territories**.
 - Real-time updates via Change Data Capture and empApi (Lightning). Experience Cloud uses 20-second polling.
 - Audio buzzer and utility-bar badge on new relevant alerts.
 - Global **acknowledge** and personal **dismiss**, with **per-type** Dismiss All and restore of today’s dismissals.
-- Tabs **Priority Alerts (n)** and **Panic Alerts (n)**; each tab has **Today only** (default on), Sync, Undo, and Dismiss All (Salesforce utility chrome keeps the combined `Alert Center (n)` label).
+- Tabs for each enabled type (**Priority**, **Cancellation**, **In Jeopardy**, **Panic**); each tab has **Today only** (default on), Sync, Undo, and Dismiss All (Salesforce utility chrome keeps the combined `Alert Center (n)` label).
 - Job-card filter icon publishes a Field Service event that **creates and loads a temporary Gantt filter** for that Service Appointment.
-- Packaged list views for All, High Priority, and Panic alerts.
+- Packaged list views for All, High Priority, Panic, Cancellation, and In Jeopardy alerts.
 
 ## End-to-end flow
 
@@ -27,7 +28,7 @@ flowchart TD
     end
 
     subgraph create [Alert creation]
-        SA[Service Appointment insert or parent lookup change]
+        SA[Service Appointment insert update cancel or in jeopardy]
         Trig[FS_ServiceAppointmentTrigger]
         SOS[Technician SOS on mobile]
         GPS[Device GPS plus GraphQL resource]
@@ -65,7 +66,7 @@ flowchart TD
     Util --> Filt
 ```
 
-## Configurability: Priority Alerts, Panic Alerts, or both
+## Configurability
 
 Edit Custom Metadata **FS Alert Center Setting** record **Default Setting** (`FS_Alert_Center_Setting.Default_Setting`).
 
@@ -73,18 +74,11 @@ Edit Custom Metadata **FS Alert Center Setting** record **Default Setting** (`FS
 |---|---|---|
 | `Priority_Alerts_Enabled__c` | true | **On:** trigger may insert High Priority Alerts; utility shows Priority Alerts. **Off:** no job-alert inserts; Priority tab hidden. |
 | `Panic_Alerts_Enabled__c` | true | **On:** utility shows Panic Alerts. **Off:** Panic tab hidden. Mobile SOS can still create records; they will not appear in the utility. |
+| `Cancellation_Alerts_Enabled__c` | false | **On:** trigger inserts Cancellation Alerts when Status becomes `Canceled` **by a user with the Field Service Mobile permission set license**; utility shows Cancellation Alerts. |
+| `Jeopardy_Alerts_Enabled__c` | false | **On:** trigger inserts In Jeopardy Alerts when `FSL__InJeopardy__c` becomes true; utility shows In Jeopardy Alerts. Distinct from the Work Order priority token `Jeopardy` in `Alert_Priorities__c`. |
 | `Alert_Priorities__c` | `High,Critical,Jeopardy` | Comma-separated, case-insensitive list matched to Work Order Line Item Priority, then Work Order Priority. |
 
-Utility layout from the two flags:
-
-| Priority | Panic | What dispatchers see |
-|---|---|---|
-| true | true | Tabs **Priority Alerts (n)** and **Panic Alerts (n)**, each with Today only, Sync / Undo / Dismiss All |
-| true | false | Tab **Priority Alerts (n)** with that type’s toolbar |
-| false | true | Tab **Panic Alerts (n)** with that type’s toolbar |
-| false | false | Empty panel |
-
-The Salesforce utility item label stays `Alert Center (n)` (combined count of enabled types). Each tab label carries **that type’s** count. If only Panic is enabled, the panel shows a single **Panic Alerts (n)** tab.
+The utility renders **one tab per enabled type** (including a single tab when only one type is on). The Salesforce utility item label stays `Alert Center (n)` (combined count of enabled types). Each tab label carries **that type’s** count.
 
 Turning Panic off in CMDT does **not** disable the mobile SOS button. It only hides Panic cards in the dispatcher utility.
 
@@ -100,21 +94,42 @@ All of the following must be true:
 2. The Service Appointment record type is **Field Services** (`Field_Services`). Other record types skip lookup population and alert creation.
 3. `Default_Setting` exists and `Priority_Alerts_Enabled__c` is true.
 4. The Service Appointment is **inserted**, or `FS_Work_Order__c` / `FS_Work_Order_Line_Item__c` **changed** (parent lookups populated or re-parented). Changing only WO/WOLI priority without those lookup changes does not create a new alert.
-5. No existing `FS_AlertCenter__c` for that Service Appointment (one job alert per SA).
+5. No existing `FS_AlertCenter__c` with `Alert_Type__c = High Priority Alert` for that Service Appointment (one High Priority Alert per SA; other types can still be created).
 6. Computed priority is not blank: **Work Order Line Item.Priority** if present, otherwise **Work Order.Priority**.
 7. That value (trimmed, lowercased) is in `Alert_Priorities__c`.
 
 Created record: `Alert_Type__c = High Priority Alert`, `Status__c = New`, Service Appointment, Service Territory from the appointment.
 
-Before insert/update, the same trigger copies `ParentRecordId` onto `FS_Work_Order__c` and/or `FS_Work_Order_Line_Item__c` so those lookups exist for priority evaluation.
+Before insert/update, the same trigger copies `ParentRecordId` onto `FS_Work_Order__c` and/or `FS_Work_Order_Line_Item__c` **only when that lookup is blank**. Existing values are not overwritten or cleared.
 
 The job **card** shows `ServiceAppointment.Priority__c`. Creation uses **WO/WOLI Priority**. Keep those aligned in the org if you want the card to match the trigger.
+
+### Cancellation Alert
+
+Same trigger, after insert or after update, when `Cancellation_Alerts_Enabled__c` is true:
+
+1. Bypass and Field Services record type checks as for High Priority.
+2. Status is `Canceled` on insert, or Status **becomes** `Canceled` on update.
+3. The running user has the **Field Service Mobile** permission set license (field resource). Cancellations by users without that license (for example dispatchers) do not create this alert.
+4. No existing Cancellation Alert for that Service Appointment.
+
+Created record: `Alert_Type__c = Cancellation Alert`. A High Priority Alert on the same appointment does not block this row.
+
+### In Jeopardy Alert
+
+Same trigger when `Jeopardy_Alerts_Enabled__c` is true:
+
+1. Bypass and Field Services record type checks as for High Priority.
+2. `FSL__InJeopardy__c` is true on insert, or **becomes** true on update.
+3. No existing In Jeopardy Alert for that Service Appointment.
+
+Created record: `Alert_Type__c = In Jeopardy Alert`. This uses the Field Service In Jeopardy checkbox, not Work Order priority `Jeopardy`.
 
 ### Panic Alert
 
 Created only from `fsMobilePanicButton` with UI API `createRecord` (no Apex), so it can run **offline** after priming.
 
-1. Optional **Nature of the Emergency** combobox (not required). Values: Medical crisis, Physical assault, Threat of violence, Environmental accident. Values are hardcoded to match the picklist so extra UI API priming is not required.
+1. Optional **Nature of the Emergency** combobox (not required). Options come from the `Nature_of_the_Emergency__c` picklist via UI API (`getObjectInfo` and `getPicklistValues`). If object info or picklist values cannot be read (offline without priming, or a wire error), the combobox falls back to the packaged four values: Medical crisis, Physical assault, Threat of violence, Environmental accident. Priming `FS_AlertCenter__c` also loads those picklist values.
 2. Device GPS (`navigator.geolocation`, high accuracy, 10 second timeout).
 3. GraphQL: Service Resource whose `RelatedRecordId` is the current user.
 4. GraphQL: Service Territory Members; first with Territory Type `P` or `Primary` is stored as `Service_Territory__c`. If none, territory is left blank.
@@ -140,7 +155,7 @@ Apex reads `FSL__User_Setting_Territory__c` where `FSL__User_Setting__r.FSL__Use
 
 If the dispatcher has loaded **no** territories, the utility shows **no** alerts.
 
-Use the **Sync** (refresh) icon on the Priority or Panic toolbar after changing Gantt-loaded territories so the query picks up the new set.
+Use the **Sync** (refresh) icon on any type toolbar after changing Gantt-loaded territories so the query picks up the new set.
 
 Matching is exact on the alert’s territory. Parent/child territory trees are not expanded unless those territories are also loaded on the Gantt.
 
@@ -163,17 +178,21 @@ Each enabled type has its own toolbar **above that type’s cards**:
 | **Undo** | undo | Restores **today’s** personal dismissals for **that type only**. |
 | **Dismiss All** | clear | Personally dismisses **New** cards **currently visible** on that type (respects Today only). Skips acknowledged cards. |
 
-Tab labels (when both types are enabled):
+Tab labels (enabled types only):
 
-- `Priority Alerts (n)` — `n` is the count of High Priority Alert cards currently visible (after Today only)
-- `Panic Alerts (n)` — `n` is the count of Panic Alert cards currently visible (after Today only)
+- `Priority Alerts (n)` — High Priority Alert cards currently visible (after Today only)
+- `Cancellation Alerts (n)` — Cancellation Alert cards currently visible (after Today only)
+- `In Jeopardy Alerts (n)` — In Jeopardy Alert cards currently visible (after Today only)
+- `Panic Alerts (n)` — Panic Alert cards currently visible (after Today only)
 
-Empty copy: “No priority alerts for today.” / “No panic alerts for today.” when Today only is checked; otherwise “No priority alerts match your loaded filters.” / “No panic alerts match your loaded filters.”
+Empty copy: “No priority/panic/cancellation/in jeopardy alerts for today.” when that tab’s Today only is checked; otherwise the loaded-filters copy.
 
-Internal tab values remain `jobs` and `panic`. Toolbar buttons pass the picklist API value via `data-alert-type`:
+Internal tab values: `jobs`, `cancellation`, `jeopardy`, `panic`. Toolbar `data-alert-type`:
 
-- Priority toolbar: `High Priority Alert`
-- Panic toolbar: `Panic Alert`
+- Priority: `High Priority Alert`
+- Cancellation: `Cancellation Alert`
+- In Jeopardy: `In Jeopardy Alert`
+- Panic: `Panic Alert`
 
 ```mermaid
 flowchart LR
@@ -247,6 +266,8 @@ Open the **FS Alert Centers** tab. Packaged list views (Everything scope — **n
 | `All` | All | none | Full columns including Nature and GPS |
 | `FS_All_Alert_Centers` | FS All Alert Centers | none | Day-to-day list without Nature/GPS |
 | `FS_All_High_Priority_Alerts` | All High Priority Alerts | Alert Type = High Priority Alert | Job alerts; Service Appointment column |
+| `FS_All_Cancellation_Alerts` | All Cancellation Alerts | Alert Type = Cancellation Alert | Canceled appointments; Service Appointment column |
+| `FS_All_In_Jeopardy_Alerts` | All In Jeopardy Alerts | Alert Type = In Jeopardy Alert | In Jeopardy appointments; Service Appointment column |
 | `FS_All_Panic_Alerts` | All Panic Alerts | Alert Type = Panic Alert | Panic resource and Nature columns |
 
 FS Alert Dismissals: `All` and `FS_All_Alert_Dismissals`.
@@ -257,22 +278,32 @@ Use the **utility** for live, territory-scoped work. Use **list views** for sear
 
 **Priority Alerts:** appointment number (opens the SA), Gantt filter, copy appointment number, SA Priority, Early Start, Due Date, Territory, Created, Address (Street and City).
 
+**Cancellation Alerts:** appointment number, Gantt filter, copy, Status, Territory, Created, Address.
+
+**In Jeopardy Alerts:** appointment number, Gantt filter, copy, In Jeopardy, Territory, Created, Address.
+
 **Panic:** resource name (opens the Service Resource). Shown only when populated: Phone/Mobile, Employee Number, Nature of the Emergency. Always: Territory, Created. If GPS exists: **Reported Location** map pin.
 
 ## Real-time behaviour
 
 - Lightning: subscribe to `/data/FS_AlertCenter__ChangeEvent`. CREATE reloads with toast and buzzer; UPDATE reloads silently.
 - Experience Cloud / `isCommunityMode`: poll `getActiveAlerts` every 20 seconds.
-- New job toast: warning, sticky. New panic toast: error, sticky.
+- New job toast: warning, sticky. New panic or cancellation toast: error, sticky. New in-jeopardy toast: warning, sticky.
 - Utility label: `Alert Center` or `Alert Center (n)`. New relevant alerts highlight the utility item and play `FS_AlertBuzzer`.
 
 ## Security and access
 
-Assign permission set **FS Alert Center Component Access** (`FS_AlertCenter_Component_Access`).
+Assign one or more of these permission sets (no Salesforce license lock, so Experience Cloud booking users can be assigned the booking set):
 
-It includes Apex access, Alert Center and Dismissal CRUD, related FLS (including Nature of the Emergency), User Phone and Employee Number read, Service Resource and Service Territory Member read, Service Appointment **Field Services** record type, and object tabs.
+| Permission set | API name | Assign to |
+|---|---|---|
+| FS Alert Center Appointment Booking | `FS_Alert_Center_Appointment_Booking` | External booking users. Field Services record type plus SA parent lookups, Status, Priority, and In Jeopardy read. No Alert Center UI. |
+| FS Alert Center Field Resource | `FS_Alert_Center_Field_Resource` | Technicians who raise panic from mobile. Alert Center create/read and panic field FLS, Service Resource and Service Territory Member read. |
+| FS Alert Center Dispatcher | `FS_Alert_Center_Dispatcher` | Schedulers and team leaders. Utility Apex, Alert Center read/edit, Dismissal create/read/edit/delete, tabs, SA display fields. |
 
-Utility queries/DML run in system mode so dispatchers see alerts in **loaded Gantt territories** without each alert being shared to them. CMDT reads and some trigger queries use `WITH SECURITY_ENFORCED`.
+The panic **global action** still comes from assigning **FS Mobile Global Layout** to the Field Service Technician profile (not from a permission set).
+
+Utility queries/DML and trigger SOQL run in system mode so booking users do not need Alert Center object access for SA save, and dispatchers see alerts in **loaded Gantt territories** without each alert being shared to them.
 
 ## Obtain the source (clone, copy, or retrieve)
 
@@ -350,16 +381,18 @@ sf project deploy start --source-dir force-app --target-org <TARGET_ORG_ALIAS>
 sf project deploy start --source-dir force-app/main/default/lwc/fsAlertCenterUtility --target-org <TARGET_ORG_ALIAS>
 ```
 
-`manifest/package.xml` is the supported inventory for a complete install (Apex, LWCs, objects, CMDT, layouts including **FS Mobile Global Layout**, quick action, list views, tabs, flexipages, CDC member, static resource, permission set).
+`manifest/package.xml` is the supported inventory for a complete install (Apex, LWCs, objects, CMDT, layouts including **FS Mobile Global Layout**, quick action, list views, tabs, flexipages, CDC member, static resource, permission sets).
 
 The global publisher layout includes the panic action in **Mobile and Lightning Actions** (`platformActionList`). A Classic quick action list is also required for deploy (New Task, New Event, Log a Call). LWC actions cannot be placed in `quickActionList`.
 
 ## Post-deployment setup
 
-1. Assign **FS Alert Center Component Access** to dispatchers (and to anyone who must create or see Alert Center data). This permission set includes the Service Appointment **Field Services** record type.
+The numbered new-org checklist (prerequisites through smoke test) is in `README_IMPLEMENTATION.md`. Summary:
+
+1. Assign **FS Alert Center Dispatcher** to schedulers/team leaders, **FS Alert Center Field Resource** to technicians, and **FS Alert Center Appointment Booking** to external booking users. The booking set includes the Service Appointment **Field Services** record type.
 2. Add **FS Alert Center** (`fsAlertCenterUtility`) to the Lightning app **utility bar**.
 3. Confirm Change Data Capture includes `FS_AlertCenter__c` (packaged as `FS_ChangeEvents_AlertCenter_ChangeEvent` on the ChangeEvents channel).
-4. Set **Default Setting** CMDT flags for Priority Alerts / Panic Alerts / priorities.
+4. Set **Default Setting** CMDT flags (Priority, Panic, Cancellation, Jeopardy) and priorities. Cancellation and Jeopardy default **off**.
 5. Add **FS Mobile Panic Button** as a Field Service Mobile global action. The packaged publisher layout is **FS Mobile Global Layout**. In Setup → Publisher Layouts, assign it to the **Field Service Technician** profile (profile assignment is **not** in the package).
 6. Prime `FS_AlertCenter__c`, `ServiceResource`, and `ServiceTerritoryMember` in the Field Service Mobile Offline Brief.
 7. Ensure technicians have a **Service Resource** linked to their User and a **primary** Service Territory Member so panic rows get a territory and appear on dispatcher utilities.
@@ -367,6 +400,8 @@ The global publisher layout includes the panic action in **Mobile and Lightning 
 9. On Field Service profiles (or equivalent permission set groups), assign the Service Appointment record type **Field Services** and set it as the **default** for users who create appointments from the Gantt or mobile. The permission set only makes the record type visible; it does not set the profile default. Existing appointments keep their current record type; they will not run this automation until updated to Field Services (no conversion job is packaged).
 
 Optional: set **FS Trigger Bypass Setting** at org, profile, or user level to skip the Service Appointment trigger during data loads.
+
+This package ships its own `FS_ServiceAppointmentTrigger`. It does **not** depend on a customer Trigger Actions Framework. If an org already uses TAF, do not also register `FS_ServiceAppointmentTriggerHandler` as a Trigger Action while this trigger is active, or the handler would run twice. To use TAF instead, empty the packaged trigger body in that org only and register the handler there.
 
 ## Packaged objects and automation (summary)
 
@@ -376,7 +411,7 @@ Optional: set **FS Trigger Bypass Setting** at org, profile, or user level to sk
 | `FS_Alert_Dismissal__c` | Custom object | Per-user hide |
 | `FS_Alert_Center_Setting__mdt` | Custom metadata | Feature flags and priorities |
 | `FS_Trigger_Bypass_Setting__c` | Hierarchy custom setting | Skip SA trigger |
-| `FS_ServiceAppointmentTrigger` | Trigger | Parent lookups + job alerts for Field Services SAs |
+| `FS_ServiceAppointmentTrigger` | Trigger | Parent lookups (blank only) + High Priority, Cancellation, and In Jeopardy alerts for Field Services SAs |
 | `ServiceAppointment.Field_Services` | Record type | Gates SA trigger automation |
 | `fsAlertCenterUtility` | LWC | Dispatcher utility |
 | `fsMobilePanicButton` | LWC | Technician SOS |
