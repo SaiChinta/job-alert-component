@@ -79,6 +79,36 @@
     max-width: min(100%, 22rem);
 }
 
+.territory-diagnostics {
+    width: 100%;
+    max-width: min(100%, 22rem);
+    margin-top: 0.75rem;
+    padding: 0.5rem 0.625rem;
+    text-align: left;
+    background: #f3f2f2;
+    border: 1px solid #dddbda;
+    border-radius: 6px;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.territory-diagnostics-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: #3e3e3c;
+    margin: 0 0 0.25rem;
+}
+
+.territory-diagnostics-line {
+    font-size: 0.625rem;
+    line-height: 1.35;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: #181818;
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
 .bold-text {
     font-weight: 800;
 }

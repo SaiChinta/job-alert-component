@@ -151,6 +151,19 @@ In Field Service Mobile settings, prime at least:
 
 Without priming, online SOS can still work; offline SOS and schema-driven Nature options will not. Unprimed picklist wires fall back to the four packaged values (see step 8).
 
+### Private Service Territory (post-deploy consideration)
+
+This package does **not** add `ServiceTerritory` to the Alert Center Offline Brief. Territory records are expected to already be in the Field Service Mobile briefcase from a **separate** build.
+
+When Service Territory org-wide default is **Private**:
+
+1. Assign all three Alert Center permission sets as needed. Each includes Service Territory **Read** (not View All). Salesforce also requires Operating Hours **Read** when Service Territory Read is granted; that is packaged on the same three sets. Object Read without **record** sharing is not enough for GraphQL or `createRecord` to set `Service_Territory__c`.
+2. Keep a sharing rule (or equivalent) so field resources actually see territory rows (for example share to the Field Resources public group / FS Field Resources Team). Inspectors used for SOS must be in that group.
+3. Confirm the other briefcase still includes `ServiceTerritory`, then fully **sync** Field Service Mobile after the OWD or sharing change.
+4. Panic SOS still uses UI API `createRecord` from the LWC so it can run **offline**. Do not replace that with Apex `insert as system`: Apex only runs on the server, so offline SOS would fail, and system mode would skip the inspector’s sharing. If GraphQL cannot return a Primary `ServiceTerritoryId`, SOS still inserts; the utility will not show that panic until `Service_Territory__c` is populated.
+
+If a new org does not have the other briefcase, SOS can keep creating panics with a blank territory until `ServiceTerritory` is primed there as well.
+
 ### Device
 
 Technicians must allow **location** when SOS requests GPS (high accuracy, 10 second timeout).
@@ -162,7 +175,7 @@ Technicians must allow **location** when SOS requests GPS (high accuracy, 10 sec
 For each technician who will tap SOS:
 
 1. A **Service Resource** whose `RelatedRecordId` is that User. SOS fails with an error if none exists.
-2. A **Service Territory Member** with Territory Type **Primary** (`P` or `Primary`). That territory is stored on the alert.
+2. A **Service Territory Member** with Territory Type **Primary** (`P` or `Primary`). GraphQL stores that member’s `ServiceTerritoryId` on the alert when the inspector can **read** that Service Territory record. After Private OWD, object Read (packaged) plus sharing/group membership are both required.
 3. Optional for the panic **card**: User **Phone** and **Employee Number** (shown only when populated).
 
 A Panic Alert **without** `Service_Territory__c` is stored but **never shown** in the utility.

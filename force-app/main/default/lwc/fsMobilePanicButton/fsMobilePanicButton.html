@@ -42,5 +42,12 @@
                 </div>
             </div>
         </template>
+
+        <template if:true={showTerritoryDiagnostics}>
+            <div class="territory-diagnostics">
+                <p class="territory-diagnostics-title">Territory diagnostics</p>
+                <pre class="territory-diagnostics-line">{territoryDiagnosticsText}</pre>
+            </div>
+        </template>
     </div>
 </template>

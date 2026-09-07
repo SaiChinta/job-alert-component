@@ -8,6 +8,8 @@ import userId from '@salesforce/user/Id';
 import ALERT_CENTER_OBJECT from '@salesforce/schema/FS_AlertCenter__c';
 import NATURE_FIELD from '@salesforce/schema/FS_AlertCenter__c.Nature_of_the_Emergency__c';
 
+const SHOW_TERRITORY_DIAGNOSTICS = false;
+
 const SERVICE_RESOURCE_QUERY = gql`
     query getCurrentUserServiceResource($userId: ID) {
         uiapi {
@@ -25,11 +27,11 @@ const SERVICE_RESOURCE_QUERY = gql`
 `;
 
 const TERRITORY_MEMBER_QUERY = gql`
-    query getServiceResourceTerritories($resourceId: ID) {
+    query getCurrentUserTerritoryMembers($userId: ID) {
         uiapi {
             query {
                 ServiceTerritoryMember(
-                    where: { ServiceResourceId: { eq: $resourceId } }
+                    where: { ServiceResource: { RelatedRecordId: { eq: $userId } } }
                     first: 20
                 ) {
                     edges {
@@ -37,8 +39,13 @@ const TERRITORY_MEMBER_QUERY = gql`
                             Id
                             TerritoryType {
                                 value
+                                displayValue
                             }
                             ServiceTerritoryId {
+                                value
+                                displayValue
+                            }
+                            ServiceResourceId {
                                 value
                             }
                         }
@@ -61,6 +68,9 @@ export default class FsMobilePanicButton extends LightningElement {
     serviceResourceId;
     territoryMemberEdges = [];
     locationService;
+    resourceQueryError = '';
+    territoryQueryError = '';
+    lastCreateResult = '';
 
     @track isLoading = false;
     @track isEmergencyTriggered = false;
@@ -76,6 +86,10 @@ export default class FsMobilePanicButton extends LightningElement {
         } catch {
             this.locationService = null;
         }
+    }
+
+    get showTerritoryDiagnostics() {
+        return SHOW_TERRITORY_DIAGNOSTICS;
     }
 
     get natureRecordTypeId() {
@@ -102,18 +116,17 @@ export default class FsMobilePanicButton extends LightningElement {
         };
     }
 
-    get territoryQuery() {
-        return this.serviceResourceId ? TERRITORY_MEMBER_QUERY : undefined;
-    }
-
-    get territoryVariables() {
-        return {
-            resourceId: this.serviceResourceId
-        };
-    }
-
     get isNativeLocationAvailable() {
         return this.locationService && typeof this.locationService.isAvailable === 'function' && this.locationService.isAvailable();
+    }
+
+    get territoryDiagnosticsText() {
+        const lines = this.buildTerritoryDiagnosticLines();
+        const texts = [];
+        for (let i = 0; i < lines.length; i++) {
+            texts.push(lines[i].text);
+        }
+        return texts.join('\n');
     }
 
     @wire(getObjectInfo, { objectApiName: ALERT_CENTER_OBJECT })
@@ -139,8 +152,9 @@ export default class FsMobilePanicButton extends LightningElement {
         variables: '$resourceVariables'
     })
     wiredServiceResource(result) {
-        const { data, errors } = result;
-        if (errors || !data) {
+        this.resourceQueryError = this.formatGraphqlErrors(result);
+        const data = result && result.data;
+        if (!data) {
             this.serviceResourceId = undefined;
             return;
         }
@@ -149,12 +163,13 @@ export default class FsMobilePanicButton extends LightningElement {
     }
 
     @wire(graphql, {
-        query: '$territoryQuery',
-        variables: '$territoryVariables'
+        query: TERRITORY_MEMBER_QUERY,
+        variables: '$resourceVariables'
     })
     wiredTerritoryMembers(result) {
-        const { data, errors } = result;
-        if (errors || !data) {
+        this.territoryQueryError = this.formatGraphqlErrors(result);
+        const data = result && result.data;
+        if (!data) {
             this.territoryMemberEdges = [];
             return;
         }
@@ -224,20 +239,25 @@ export default class FsMobilePanicButton extends LightningElement {
     sendAlertToDispatcher() {
         this.statusMessage = 'Dispatching Emergency SOS Alert...';
         if (!this.serviceResourceId) {
+            this.lastCreateResult = 'Last create: blocked, no Service Resource.';
             this.showToast('Alert Error', 'No Service Resource is linked to the current user.', 'error');
             this.isLoading = false;
             return;
         }
 
+        const fields = this.buildAlertFields();
+        this.lastCreateResult = this.describeCreatePayload(fields);
+
         createRecord({
             apiName: 'FS_AlertCenter__c',
-            fields: this.buildAlertFields()
+            fields: fields
         })
             .then(() => {
                 this.isEmergencyTriggered = true;
                 this.showToast('SOS Sent', 'Dispatcher alert dispatched successfully.', 'success');
             })
             .catch((err) => {
+                this.lastCreateResult = this.lastCreateResult + ' Create failed: ' + this.getErrorMessage(err);
                 this.showToast('System Fault', this.getErrorMessage(err), 'error');
             })
             .finally(() => {
@@ -266,12 +286,174 @@ export default class FsMobilePanicButton extends LightningElement {
     resolvePrimaryTerritoryId() {
         const edges = this.territoryMemberEdges || [];
         for (let i = 0; i < edges.length; i++) {
-            const typeValue = edges[i]?.node?.TerritoryType?.value;
-            if (typeValue === 'P' || typeValue === 'Primary') {
-                return edges[i]?.node?.ServiceTerritoryId?.value || null;
+            const node = edges[i] && edges[i].node ? edges[i].node : null;
+            if (!node) {
+                continue;
+            }
+            const typeValue = this.readFieldValue(node.TerritoryType);
+            if (typeValue !== 'P' && typeValue !== 'Primary') {
+                continue;
+            }
+            const lookupId = this.readFieldValue(node.ServiceTerritoryId);
+            if (lookupId) {
+                return lookupId;
+            }
+            const relatedId = this.readRelatedRecordId(node.ServiceTerritory);
+            if (relatedId) {
+                return relatedId;
             }
         }
         return null;
+    }
+
+    buildTerritoryDiagnosticLines() {
+        const lines = [];
+        this.addDiagnosticLine(lines, 'User: ' + this.displayOrBlank(this.currentUserId));
+        this.addDiagnosticLine(lines, 'Service Resource: ' + this.displayOrBlank(this.serviceResourceId));
+        this.addDiagnosticLine(lines, 'STM query: static by user');
+        if (this.resourceQueryError) {
+            this.addDiagnosticLine(lines, 'SR GraphQL: ' + this.resourceQueryError);
+        }
+        if (this.territoryQueryError) {
+            this.addDiagnosticLine(lines, 'STM GraphQL: ' + this.territoryQueryError);
+        }
+        const edges = this.territoryMemberEdges || [];
+        this.addDiagnosticLine(lines, 'STM rows: ' + edges.length);
+        const summaries = this.summarizeTerritoryMembers();
+        for (let i = 0; i < summaries.length; i++) {
+            this.addDiagnosticLine(lines, summaries[i]);
+        }
+        const resolved = this.resolvePrimaryTerritoryId();
+        this.addDiagnosticLine(lines, 'Resolved territory: ' + this.displayOrBlank(resolved));
+        this.addDiagnosticLine(
+            lines,
+            'Create will set Service_Territory__c: ' + (resolved ? 'yes' : 'no')
+        );
+        if (this.lastCreateResult) {
+            this.addDiagnosticLine(lines, this.lastCreateResult);
+        }
+        return lines;
+    }
+
+    addDiagnosticLine(lines, text) {
+        lines.push({
+            key: String(lines.length + 1),
+            text: text
+        });
+    }
+
+    summarizeTerritoryMembers() {
+        const edges = this.territoryMemberEdges || [];
+        const lines = [];
+        for (let i = 0; i < edges.length; i++) {
+            lines.push(this.summarizeTerritoryMemberRow(i, edges[i]));
+        }
+        return lines;
+    }
+
+    summarizeTerritoryMemberRow(index, edge) {
+        const node = edge && edge.node ? edge.node : null;
+        if (!node) {
+            return index + 1 + '. (empty node)';
+        }
+        const typeValue = this.readFieldValue(node.TerritoryType);
+        const typeLabel = node.TerritoryType && node.TerritoryType.displayValue
+            ? String(node.TerritoryType.displayValue)
+            : '';
+        const lookupId = this.readFieldValue(node.ServiceTerritoryId);
+        const lookupLabel = node.ServiceTerritoryId && node.ServiceTerritoryId.displayValue
+            ? String(node.ServiceTerritoryId.displayValue)
+            : '';
+        const relatedId = this.readRelatedRecordId(node.ServiceTerritory);
+        const relatedName = node.ServiceTerritory ? this.readFieldValue(node.ServiceTerritory.Name) : '';
+        const relatedResourceId = this.readFieldValue(node.ServiceResourceId);
+        return (
+            index +
+            1 +
+            '. type=' +
+            this.displayOrBlank(typeValue) +
+            (typeLabel ? ' (' + typeLabel + ')' : '') +
+            ' lookup=' +
+            this.displayOrBlank(lookupId) +
+            (lookupLabel ? ' lookupLabel=' + lookupLabel : '') +
+            ' related=' +
+            this.displayOrBlank(relatedId) +
+            (relatedName ? ' name=' + relatedName : '') +
+            (relatedResourceId ? ' sr=' + relatedResourceId : '')
+        );
+    }
+
+    describeCreatePayload(fields) {
+        const territoryId = fields.Service_Territory__c;
+        if (territoryId) {
+            return 'Last create payload territory: ' + territoryId;
+        }
+        return 'Last create payload territory: omitted';
+    }
+
+    readFieldValue(field) {
+        if (field === null || field === undefined) {
+            return '';
+        }
+        if (typeof field === 'string' || typeof field === 'number') {
+            return String(field);
+        }
+        if (typeof field === 'object' && field.value !== undefined && field.value !== null && field.value !== '') {
+            return String(field.value);
+        }
+        return '';
+    }
+
+    readRelatedRecordId(related) {
+        if (!related) {
+            return '';
+        }
+        if (typeof related.Id === 'string') {
+            return related.Id;
+        }
+        return this.readFieldValue(related.Id);
+    }
+
+    displayOrBlank(value) {
+        if (value === null || value === undefined || value === '') {
+            return '(blank)';
+        }
+        return String(value);
+    }
+
+    formatGraphqlErrors(result) {
+        if (!result) {
+            return '';
+        }
+        const rawErrors = result.errors || result.error;
+        if (!rawErrors) {
+            return '';
+        }
+        const list = Array.isArray(rawErrors) ? rawErrors : [rawErrors];
+        const messages = [];
+        for (let i = 0; i < list.length; i++) {
+            const message = this.readGraphqlErrorMessage(list[i]);
+            if (message) {
+                messages.push(message);
+            }
+        }
+        return messages.join(' | ');
+    }
+
+    readGraphqlErrorMessage(item) {
+        if (!item) {
+            return '';
+        }
+        if (typeof item === 'string') {
+            return item;
+        }
+        if (item.message) {
+            return String(item.message);
+        }
+        if (item.body && item.body.message) {
+            return String(item.body.message);
+        }
+        return '';
     }
 
     getErrorMessage(error) {

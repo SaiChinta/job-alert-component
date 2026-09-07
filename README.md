@@ -132,8 +132,8 @@ Created only from `fsMobilePanicButton` with UI API `createRecord` (no Apex), so
 1. Optional **Nature of the Emergency** combobox (not required). Options come from the `Nature_of_the_Emergency__c` picklist via UI API (`getObjectInfo` and `getPicklistValues`). If object info or picklist values cannot be read (offline without priming, or a wire error), the combobox falls back to the packaged four values: Medical crisis, Physical assault, Threat of violence, Environmental accident. Priming `FS_AlertCenter__c` also loads those picklist values.
 2. Device GPS (`navigator.geolocation`, high accuracy, 10 second timeout).
 3. GraphQL: Service Resource whose `RelatedRecordId` is the current user.
-4. GraphQL: Service Territory Members; first with Territory Type `P` or `Primary` is stored as `Service_Territory__c`. If none, territory is left blank.
-5. Insert: `Alert_Type__c = Panic Alert`, `Status__c = New`, Panic Service Resource, latitude, longitude, optional territory and nature.
+4. GraphQL: Service Territory Members; first with Territory Type `P` or `Primary` **and a non-blank** `ServiceTerritoryId` is stored as `Service_Territory__c`. If GraphQL errors, or the lookup Id is blank (common when Service Territory OWD is Private and the user cannot see that record in UI API), territory is omitted and SOS still inserts.
+5. Insert via UI API `createRecord` only (no Apex): `Alert_Type__c = Panic Alert`, `Status__c = New`, Panic Service Resource, latitude, longitude, optional territory and nature. Apex `insert as system` is not used here because SOS must work **offline**; Apex runs only on the server.
 
 If the user has no Service Resource, SOS shows an error and does not insert.
 
@@ -144,6 +144,8 @@ Prime these objects in the Field Service Mobile Offline Brief:
 - `FS_AlertCenter__c`
 - `ServiceResource`
 - `ServiceTerritoryMember`
+
+`ServiceTerritory` is **not** primed by this package. It must already be in the Field Service Mobile briefcase from a separate build (see `README_IMPLEMENTATION.md`).
 
 ## Gantt Service Territory filtration
 
@@ -297,9 +299,9 @@ Assign one or more of these permission sets (no Salesforce license lock, so Expe
 
 | Permission set | API name | Assign to |
 |---|---|---|
-| FS Alert Center Appointment Booking | `FS_Alert_Center_Appointment_Booking` | External booking users. Field Services record type plus SA parent lookups, Status, Priority, and In Jeopardy read. No Alert Center UI. |
-| FS Alert Center Field Resource | `FS_Alert_Center_Field_Resource` | Technicians who raise panic from mobile. Alert Center create/read and panic field FLS, Service Resource and Service Territory Member read. |
-| FS Alert Center Dispatcher | `FS_Alert_Center_Dispatcher` | Schedulers and team leaders. Utility Apex, Alert Center read/edit, Dismissal create/read/edit/delete, tabs, SA display fields. |
+| FS Alert Center Appointment Booking | `FS_Alert_Center_Appointment_Booking` | External booking users. Field Services record type plus SA parent lookups, Status, Priority, In Jeopardy read, and Service Territory read (Operating Hours read is required by Salesforce for that). No Alert Center UI. |
+| FS Alert Center Field Resource | `FS_Alert_Center_Field_Resource` | Technicians who raise panic from mobile. Alert Center create/read and panic field FLS; Service Resource, Service Territory Member, and Service Territory read (plus Operating Hours read). |
+| FS Alert Center Dispatcher | `FS_Alert_Center_Dispatcher` | Schedulers and team leaders. Utility Apex, Alert Center read/edit, Dismissal create/read/edit/delete, tabs, SA display fields, Service Territory read (plus Operating Hours read). |
 
 The panic **global action** still comes from assigning **FS Mobile Global Layout** to the Field Service Technician profile (not from a permission set).
 
@@ -394,7 +396,7 @@ The numbered new-org checklist (prerequisites through smoke test) is in `README_
 3. Confirm Change Data Capture includes `FS_AlertCenter__c` (packaged as `FS_ChangeEvents_AlertCenter_ChangeEvent` on the ChangeEvents channel).
 4. Set **Default Setting** CMDT flags (Priority, Panic, Cancellation, Jeopardy) and priorities. Cancellation and Jeopardy default **off**.
 5. Add **FS Mobile Panic Button** as a Field Service Mobile global action. The packaged publisher layout is **FS Mobile Global Layout**. In Setup → Publisher Layouts, assign it to the **Field Service Technician** profile (profile assignment is **not** in the package).
-6. Prime `FS_AlertCenter__c`, `ServiceResource`, and `ServiceTerritoryMember` in the Field Service Mobile Offline Brief.
+6. Prime `FS_AlertCenter__c`, `ServiceResource`, and `ServiceTerritoryMember` in the Field Service Mobile Offline Brief. Do **not** expect this package to prime `ServiceTerritory`; that object must already be in the briefcase from a separate Field Service build. After Service Territory OWD is Private, the three Alert Center permission sets include Service Territory **Read**, and sharing must still grant the inspector record access.
 7. Ensure technicians have a **Service Resource** linked to their User and a **primary** Service Territory Member so panic rows get a territory and appear on dispatcher utilities.
 8. Dispatchers must **load Gantt territories** or the utility stays empty.
 9. On Field Service profiles (or equivalent permission set groups), assign the Service Appointment record type **Field Services** and set it as the **default** for users who create appointments from the Gantt or mobile. The permission set only makes the record type visible; it does not set the profile default. Existing appointments keep their current record type; they will not run this automation until updated to Field Services (no conversion job is packaged).

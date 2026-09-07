@@ -215,13 +215,15 @@ Created only from `fsMobilePanicButton` via UI API `createRecord` (no Apex). Des
 - `ServiceResource`
 - `ServiceTerritoryMember`
 
+`ServiceTerritory` is primed by a separate Field Service briefcase, not this package. After Service Territory OWD is Private, SOS GraphQL still needs object Read (packaged on all three Alert Center permission sets) and record sharing.
+
 SOS steps:
 
 1. Technician may select Nature of the Emergency (optional combobox). Options come from the `Nature_of_the_Emergency__c` picklist via UI API (`getObjectInfo` and `getPicklistValues`). If object info or picklist values cannot be read (offline without priming, or a wire error), the combobox falls back to the packaged four values: Medical crisis, Physical assault, Threat of violence, Environmental accident. Priming `FS_AlertCenter__c` also loads those picklist values.
 2. Device GPS via `navigator.geolocation` (high accuracy, 10 second timeout).
 3. GraphQL: Service Resource where `RelatedRecordId` equals the running user (first match).
-4. GraphQL: Service Territory Members for that resource; first member with Territory Type `P` or `Primary` becomes `Service_Territory__c`. If none, territory is omitted.
-5. Create `FS_AlertCenter__c` with `Alert_Type__c = Panic Alert`, `Status__c = New`, `Panic_Service_Resource__c`, latitude/longitude, optional territory and nature.
+4. GraphQL: Service Territory Members for that resource; first member with Territory Type `P` or `Primary` **and a non-blank** `ServiceTerritoryId` becomes `Service_Territory__c`. If GraphQL errors or the lookup Id is blank, territory is omitted and SOS still creates the record.
+5. Create `FS_AlertCenter__c` with UI API `createRecord` (not Apex): `Alert_Type__c = Panic Alert`, `Status__c = New`, `Panic_Service_Resource__c`, latitude/longitude, optional territory and nature. Apex insert would not run offline.
 
 If there is no Service Resource for the user, SOS fails with a toast and no record is created.
 
@@ -352,7 +354,7 @@ List views are **not** Gantt-territory scoped. They show org data the user can a
 ## 12. Real-time, security, and runtime notes
 
 - Alert queries and DML in the utility controller, and trigger SOQL, use `SYSTEM_MODE` / `as system` so booking users do not need Alert Center object access for SA save, and dispatchers see alerts in loaded territories without each alert being shared to them.
-- Three permission sets: **FS Alert Center Appointment Booking** (SA Field Services RT and parent/status/in-jeopardy FLS), **FS Alert Center Field Resource** (panic create), **FS Alert Center Dispatcher** (utility Apex, Alert Center read/edit, Dismissal create/read/delete).
+- Three permission sets: **FS Alert Center Appointment Booking** (SA Field Services RT, parent/status/in-jeopardy FLS, Service Territory read), **FS Alert Center Field Resource** (panic create; Service Resource, STM, and Service Territory read), **FS Alert Center Dispatcher** (utility Apex, Alert Center read/edit, Dismissal create/read/edit/delete, Service Territory read).
 - This package ships `FS_ServiceAppointmentTrigger` and does not depend on Trigger Actions Framework. Do not register the handler in TAF while the packaged trigger is active.
 - CDC member `FS_ChangeEvents_AlertCenter_ChangeEvent` selects `FS_AlertCenter__ChangeEvent` on channel `ChangeEvents`.
 - Global publisher layout **FS Mobile Global Layout** puts `FS_Mobile_Panic_Button` in `platformActionList` (LWC actions cannot go in `quickActionList`). A Classic `quickActionList` (New Task, New Event, Log a Call) is required for deploy. Assign the layout to **Field Service Technician** in Setup; profile assignment is not packaged.
